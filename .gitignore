@@ -21,6 +21,7 @@ node_modules/
 dist/
 coverage/
 .pnpm-store/
+frontend/.vite/
 
 # Build / Runtime
 build/
