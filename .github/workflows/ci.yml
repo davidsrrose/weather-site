@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (lint, format-check, tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Sync backend deps
+        run: make setup-backend
+
+      - name: Lint backend
+        run: make lint-backend
+
+      - name: Format check backend
+        run: make format-check-backend
+
+      - name: Test backend
+        run: make test-backend
+
+  frontend:
+    name: Frontend (lint, format-check, typecheck, tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js LTS
+        uses: actions/setup-node@v6
+        with:
+          node-version: "lts/*"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend deps
+        run: pnpm -C frontend install --frozen-lockfile
+
+      - name: Lint frontend
+        run: pnpm -C frontend lint
+
+      - name: Format check frontend
+        run: pnpm -C frontend format:check
+
+      - name: Typecheck frontend
+        run: pnpm -C frontend typecheck
+
+      - name: Test frontend
+        run: pnpm -C frontend test:run
