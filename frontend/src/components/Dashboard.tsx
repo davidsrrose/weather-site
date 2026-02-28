@@ -1,7 +1,7 @@
 import type { FormEvent } from "react"
 import { RotateCcw } from "lucide-react"
 
-import type { HourlyPeriod } from "@/api/types"
+import type { CitySuggestion, HourlyPeriod } from "@/api/types"
 import { HourlyGraphPanel } from "@/components/HourlyGraphPanel"
 import {
   HourlyTimeline,
@@ -33,6 +33,12 @@ type DashboardProps = {
   zipInput: string
   onZipInputChange: (value: string) => void
   onZipSubmit: (event: FormEvent<HTMLFormElement>) => void
+  cityQuery: string
+  onCityQueryChange: (value: string) => void
+  citySuggestions: CitySuggestion[]
+  isCitySuggestionsLoading: boolean
+  citySuggestionsError: string
+  onCitySuggestionSelect: (suggestion: CitySuggestion) => void
   zipMessage: string
   isZipLoading: boolean
   isZipError: boolean
@@ -203,6 +209,12 @@ export function Dashboard({
   zipInput,
   onZipInputChange,
   onZipSubmit,
+  cityQuery,
+  onCityQueryChange,
+  citySuggestions,
+  isCitySuggestionsLoading,
+  citySuggestionsError,
+  onCitySuggestionSelect,
   zipMessage,
   isZipLoading,
   isZipError,
@@ -302,6 +314,52 @@ export function Dashboard({
                 {zipMessage}
               </p>
             </form>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="city-input">
+                City, state (USA only)
+              </label>
+              <input
+                id="city-input"
+                value={cityQuery}
+                onChange={(event) => {
+                  onCityQueryChange(event.target.value)
+                }}
+                placeholder="Start typing a city..."
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              />
+              {isCitySuggestionsLoading ? (
+                <p className="text-xs text-muted-foreground">Searching cities...</p>
+              ) : null}
+              {citySuggestionsError ? (
+                <p className="text-xs text-red-600">{citySuggestionsError}</p>
+              ) : null}
+              {cityQuery.trim().length >= 2 && citySuggestions.length > 0 ? (
+                <div className="max-h-40 overflow-y-auto rounded-md border">
+                  {citySuggestions.map((suggestion) => (
+                    <button
+                      key={`${suggestion.city}-${suggestion.state}`}
+                      type="button"
+                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent"
+                      onClick={() => {
+                        onCitySuggestionSelect(suggestion)
+                      }}
+                    >
+                      <span>{suggestion.label}</span>
+                      <span className="text-xs text-muted-foreground">Use</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {cityQuery.trim().length >= 2 &&
+              !isCitySuggestionsLoading &&
+              !citySuggestionsError &&
+              citySuggestions.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No city matches found.
+                </p>
+              ) : null}
+            </div>
 
             {currentLocation ? (
               <p className="text-xs text-muted-foreground">

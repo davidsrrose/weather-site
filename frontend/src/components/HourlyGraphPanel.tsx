@@ -55,6 +55,7 @@ const METRIC_CONFIG: Record<MetricKey, MetricConfig> = {
 }
 
 type ChartPoint = {
+  startTime: string
   hourLabel: string
   value: number | null
 }
@@ -62,6 +63,16 @@ type ChartPoint = {
 function toHourLabel(startTime: string): string {
   const date = new Date(startTime)
   return date.toLocaleTimeString([], { hour: "numeric" })
+}
+
+function toTooltipLabel(startTime: string): string {
+  const date = new Date(startTime)
+  return date.toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+  })
 }
 
 export function HourlyGraphPanel({
@@ -77,6 +88,7 @@ export function HourlyGraphPanel({
     const sliced = periods.slice(windowStartIndex, windowEndIndex)
 
     return sliced.map((period) => ({
+      startTime: period.startTime,
       hourLabel: toHourLabel(period.startTime),
       value: metricConfig.selector(period),
     }))
@@ -117,10 +129,11 @@ export function HourlyGraphPanel({
             <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground) / 0.2)" />
               <XAxis
-                dataKey="hourLabel"
+                dataKey="startTime"
                 tick={{ fontSize: 10 }}
                 minTickGap={14}
                 tickMargin={8}
+                tickFormatter={toHourLabel}
               />
               <YAxis
                 tick={{ fontSize: 10 }}
@@ -135,7 +148,9 @@ export function HourlyGraphPanel({
                   }
                   return [`${value}${metricConfig.unitSuffix}`, metricConfig.label]
                 }}
-                labelFormatter={(label) => `Hour: ${label}`}
+                labelFormatter={(label) =>
+                  `Hour: ${typeof label === "string" ? toTooltipLabel(label) : label}`
+                }
               />
               <Line
                 type="monotone"

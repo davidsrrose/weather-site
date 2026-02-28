@@ -7,6 +7,19 @@ export type GeocodeResponse = {
   source: "cache" | "upstream"
 }
 
+export type CitySuggestion = {
+  label: string
+  city: string
+  state: string
+  lat: number
+  lon: number
+}
+
+export type CitySuggestionsResponse = {
+  query: string
+  suggestions: CitySuggestion[]
+}
+
 export type HourlyPeriod = {
   startTime: string
   temperature: number | null

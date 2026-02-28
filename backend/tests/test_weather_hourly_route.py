@@ -1,8 +1,6 @@
 """Tests for weather hourly API route behavior."""
 
-from __future__ import annotations
 
-import os
 from pathlib import Path
 import sys
 import tempfile
@@ -19,9 +17,7 @@ BACKEND_ROOT_PATH = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT_PATH))
 
-os.environ.setdefault("ZIPCODEBASE_API_KEY", "test_key")
-
-from app.pipelines.weather_hourly import WeatherHourlyPipelineError
+from fastapi_app.pipelines.weather_hourly import WeatherHourlyPipelineError
 from fastapi_app.main import app
 
 
@@ -49,7 +45,7 @@ class WeatherHourlyRouteTests(unittest.TestCase):
         }
 
         with patch(
-            "app.api.weather.get_hourly_weather_payload",
+            "fastapi_app.api.weather.get_hourly_weather_payload",
             return_value=fake_payload,
         ):
             with TestClient(app) as client:
@@ -82,7 +78,7 @@ class WeatherHourlyRouteTests(unittest.TestCase):
     def test_weather_hourly_upstream_failure_maps_to_502(self) -> None:
         """Endpoint maps upstream pipeline errors to stable 502 payload."""
         with patch(
-            "app.api.weather.get_hourly_weather_payload",
+            "fastapi_app.api.weather.get_hourly_weather_payload",
             side_effect=WeatherHourlyPipelineError(
                 "upstream request failed", upstream_status=503
             ),
@@ -115,8 +111,8 @@ class WeatherHourlyRouteTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = str(Path(temp_dir) / "weather.duckdb")
-            mock_settings = type(
-                "MockSettings",
+            mock_config = type(
+                "MockConfig",
                 (),
                 {
                     "duckdb_path": db_path,
@@ -125,9 +121,9 @@ class WeatherHourlyRouteTests(unittest.TestCase):
                 },
             )()
 
-            with patch("app.api.weather.get_settings", return_value=mock_settings):
+            with patch("fastapi_app.api.weather.config", new=mock_config):
                 with patch(
-                    "app.api.weather.fetch_hourly_periods_for_location",
+                    "fastapi_app.api.weather.fetch_hourly_periods_for_location",
                     side_effect=_fetch_periods,
                 ):
                     with TestClient(app) as client:

@@ -1,6 +1,5 @@
 """Tests for weather hourly dlt pipeline normalization."""
 
-from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -15,7 +14,7 @@ BACKEND_SRC_PATH = Path(__file__).resolve().parents[1] / "src"
 if str(BACKEND_SRC_PATH) not in sys.path:
     sys.path.insert(0, str(BACKEND_SRC_PATH))
 
-from app.pipelines.weather_hourly import (
+from fastapi_app.pipelines.weather_hourly import (
     fetch_hourly_periods,
     normalize_hourly_period,
     weather_hourly_resource,
@@ -143,7 +142,7 @@ class WeatherHourlyPipelineTests(unittest.TestCase):
         )
 
         with patch(
-            "app.pipelines.weather_hourly.httpx.Client", return_value=mock_client
+            "fastapi_app.pipelines.weather_hourly.httpx.Client", return_value=mock_client
         ):
             rows = list(weather_hourly_resource(lat=lat, lon=lon))
 

@@ -1,6 +1,5 @@
 """Tests for DuckDB-backed forecast snapshot caching."""
 
-from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 import json
@@ -15,7 +14,7 @@ BACKEND_SRC_PATH = Path(__file__).resolve().parents[1] / "src"
 if str(BACKEND_SRC_PATH) not in sys.path:
     sys.path.insert(0, str(BACKEND_SRC_PATH))
 
-from app.services.forecast_snapshot_cache import (
+from fastapi_app.services.forecast_snapshot_cache import (
     build_location_key,
     get_or_refresh_hourly_forecast,
 )

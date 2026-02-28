@@ -4,20 +4,12 @@
 From repo root:
 1. Install dependencies:
    - `uv sync`
-
-From `backend/`:
-2. Create local env file:
-   - `cp .env.sample .env`
-3. Create a free Zipcodebase API key:
-   - `https://app.zipcodebase.com/register?plan=free`
-4. Set your API key in `.env`:
-   - `ZIPCODEBASE_API_KEY=your_real_key`
-5. Non-secret defaults live in `config.py`:
+2. Non-secret defaults live in `config.py`:
    - `duckdb_path`
    - `forecast_cache_ttl_minutes`
    - `weather_hourly_http_timeout_seconds`
    - `zip_geocode_cache_ttl_days`
-   - `zip_geocode_http_timeout_seconds`
+   - `open_meteo_geocode_http_timeout_seconds`
 
 ## Run
 From `backend/`:
@@ -32,9 +24,11 @@ From a second terminal:
    - `curl -i http://127.0.0.1:8000/api/geocode/zip/10001`
 3. Geocode invalid ZIP:
    - `curl -i http://127.0.0.1:8000/api/geocode/zip/1234`
-4. Hourly weather for valid coords:
+4. Search city suggestions (USA):
+   - `curl -i "http://127.0.0.1:8000/api/geocode/city?query=golden&limit=5"`
+5. Hourly weather for valid coords:
    - `curl -i "http://127.0.0.1:8000/api/weather/hourly?lat=39.7555&lon=-105.2211"`
-5. Hourly weather for invalid coords:
+6. Hourly weather for invalid coords:
    - `curl -i "http://127.0.0.1:8000/api/weather/hourly?lat=95&lon=-105.2211"`
 
 Expected behavior:
@@ -55,4 +49,4 @@ From `backend/`:
 ## Notes
 - API runs on port `8000`.
 - DuckDB parent directory is created automatically if missing.
-- Non-secret defaults live in `backend/config.py`; `.env` is secret-only.
+- Non-secret defaults live in `backend/config.py`.

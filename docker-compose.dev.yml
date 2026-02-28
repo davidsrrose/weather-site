@@ -4,10 +4,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile.dev
     working_dir: /workspace
-    env_file:
-      - ./backend/.env
     environment:
-      WEATHER_DUCKDB_PATH: ${WEATHER_DUCKDB_PATH:-/workspace/.data/weather.duckdb}
       PYTHONPATH: /workspace/backend:/workspace/backend/src
     command: >
       uvicorn fastapi_app.main:app

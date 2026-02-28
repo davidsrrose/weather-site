@@ -4,7 +4,8 @@ import re
 
 from fastapi import APIRouter, HTTPException
 
-from config import get_settings
+from config import config
+from fastapi_app.routes.error_responses import upstream_error_detail
 from fastapi_app.services.zip_geocode_service import (
     ZipGeocodeUpstreamError,
     get_zip_geocode,
@@ -33,23 +34,18 @@ def _validate_zip_code(zip_code: str) -> None:
 async def get_zip_geocode_endpoint(zip_code: str) -> dict[str, object]:
     """Return geocode information for a ZIP code."""
     _validate_zip_code(zip_code)
-    settings = get_settings()
 
     try:
         result = await get_zip_geocode(
             zip_code=zip_code,
-            duckdb_path=settings.duckdb_path,
-            zipcodebase_api_key=settings.zipcodebase_api_key,
-            zip_cache_ttl_days=settings.zip_geocode_cache_ttl_days,
-            request_timeout_seconds=settings.zip_geocode_http_timeout_seconds,
+            duckdb_path=config.duckdb_path,
+            zip_cache_ttl_days=config.zip_geocode_cache_ttl_days,
+            request_timeout_seconds=config.open_meteo_geocode_http_timeout_seconds,
         )
     except ZipGeocodeUpstreamError as exc:
         raise HTTPException(
             status_code=502,
-            detail={
-                "error": "upstream_error",
-                "message": "Unable to resolve ZIP right now.",
-            },
+            detail=upstream_error_detail("Unable to resolve ZIP right now."),
         ) from exc
 
     return result.to_dict()

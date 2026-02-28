@@ -1,6 +1,5 @@
 """ZIP geocode service with DuckDB-backed ZIP cache."""
 
-from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
@@ -8,15 +7,17 @@ import logging
 from typing import Any
 
 import duckdb
-import httpx
 
 from fastapi_app.services.duckdb import ensure_duckdb_parent_dir
+from fastapi_app.services.open_meteo_geocode_client import (
+    OpenMeteoGeocodeClientError,
+    fetch_us_geocode_results,
+)
 
 logger = logging.getLogger("uvicorn.error")
 
 DEFAULT_ZIP_CACHE_TTL_DAYS = 30
-DEFAULT_ZIPCODEBASE_HTTP_TIMEOUT_SECONDS = 10.0
-ZIPCODEBASE_SEARCH_URL = "https://app.zipcodebase.com/api/v1/search"
+DEFAULT_OPEN_METEO_HTTP_TIMEOUT_SECONDS = 10.0
 
 
 class ZipGeocodeUpstreamError(Exception):
@@ -123,78 +124,64 @@ def _upsert_cached_zip(
     )
 
 
-def _parse_zipcodebase_payload(
-    zip_code: str, payload: dict[str, Any]
-) -> ZipGeocodeResult:
-    """Normalize Zipcodebase payload into API response model."""
-    results = payload.get("results", {})
-    zip_matches = results.get(zip_code, [])
-    if not isinstance(zip_matches, list) or not zip_matches:
-        raise ZipGeocodeUpstreamError("No upstream geocode results for ZIP.")
-
-    first_match = zip_matches[0]
+def _parse_open_meteo_result(zip_code: str, first_match: dict[str, Any]) -> ZipGeocodeResult:
+    """Normalize one Open-Meteo result object into ZIP response model."""
     latitude = first_match.get("latitude")
     longitude = first_match.get("longitude")
-    city = first_match.get("city")
-    state = (
-        first_match.get("state_code")
-        or first_match.get("state")
-        or first_match.get("province_code")
-        or first_match.get("province")
-    )
+    city = first_match.get("name")
+    state = first_match.get("admin1")
+    country_code = first_match.get("country_code")
 
-    if latitude is None or longitude is None or not city or not state:
+    if (
+        not isinstance(latitude, (int, float))
+        or not isinstance(longitude, (int, float))
+        or not isinstance(city, str)
+        or not isinstance(state, str)
+        or not isinstance(country_code, str)
+        or country_code.upper() != "US"
+    ):
         raise ZipGeocodeUpstreamError("Incomplete upstream geocode payload.")
 
     return ZipGeocodeResult(
         zip=zip_code,
         lat=float(latitude),
         lon=float(longitude),
-        city=str(city),
-        state=str(state),
+        city=city,
+        state=state,
         source="upstream",
     )
 
 
 async def _fetch_upstream_zip_geocode(
-    zip_code: str, api_key: str, request_timeout_seconds: float
+    zip_code: str, request_timeout_seconds: float
 ) -> ZipGeocodeResult:
-    """Fetch geocode data from Zipcodebase."""
-    params = {"codes": zip_code, "country": "us", "apikey": api_key}
+    """Fetch geocode data from open-meteo geocoding API."""
     try:
-        async with httpx.AsyncClient(timeout=request_timeout_seconds) as client:
-            response = await client.get(ZIPCODEBASE_SEARCH_URL, params=params)
-    except httpx.HTTPError as exc:
+        raw_results = await fetch_us_geocode_results(
+            query=zip_code,
+            count=1,
+            request_timeout_seconds=request_timeout_seconds,
+        )
+    except OpenMeteoGeocodeClientError as exc:
         raise ZipGeocodeUpstreamError("Upstream geocode request failed.") from exc
 
-    if response.status_code >= 400:
-        raise ZipGeocodeUpstreamError(
-            f"Upstream geocode returned HTTP {response.status_code}."
-        )
+    if not raw_results:
+        raise ZipGeocodeUpstreamError("No upstream geocode results for ZIP.")
 
-    try:
-        payload = response.json()
-    except ValueError as exc:
-        raise ZipGeocodeUpstreamError(
-            "Upstream geocode returned invalid JSON."
-        ) from exc
-
-    return _parse_zipcodebase_payload(zip_code=zip_code, payload=payload)
+    return _parse_open_meteo_result(zip_code=zip_code, first_match=raw_results[0])
 
 
 async def get_zip_geocode(
     zip_code: str,
     duckdb_path: str,
-    zipcodebase_api_key: str,
     zip_cache_ttl_days: int = DEFAULT_ZIP_CACHE_TTL_DAYS,
-    request_timeout_seconds: float = DEFAULT_ZIPCODEBASE_HTTP_TIMEOUT_SECONDS,
+    request_timeout_seconds: float = DEFAULT_OPEN_METEO_HTTP_TIMEOUT_SECONDS,
 ) -> ZipGeocodeResult:
     """Resolve ZIP geocode using cache-first strategy with upstream fallback.
 
     Args:
         zip_code: ZIP code to geocode.
         duckdb_path: Path to DuckDB file.
-        zipcodebase_api_key: Zipcodebase API key.
         zip_cache_ttl_days: ZIP cache freshness in days.
         request_timeout_seconds: Timeout for upstream geocode requests.
 
@@ -218,7 +205,6 @@ async def get_zip_geocode(
         logger.info("zip cache miss zip=%s fetching upstream", zip_code)
         upstream = await _fetch_upstream_zip_geocode(
             zip_code=zip_code,
-            api_key=zipcodebase_api_key,
             request_timeout_seconds=request_timeout_seconds,
         )
         _upsert_cached_zip(connection, upstream)

@@ -76,9 +76,6 @@ What it does:
 - Frontend config var: `VITE_API_PROXY_TARGET`
 - Stays attached to logs; `Ctrl+C` automatically runs cleanup (`docker compose ... down`)
 
-Prerequisite:
-- Create `backend/.env` from `backend/.env.sample` and set `ZIPCODEBASE_API_KEY`
-
 Stop Docker dev services:
 ```bash
 make dev-docker-down
@@ -89,19 +86,12 @@ Run one command from repo root to build and launch the full app (API + UI served
 
 ```bash
 docker build -t weather-site:local .
-docker run --rm -p 8000:8000 \
-  -e ZIPCODEBASE_API_KEY=your_real_key \
-  -e WEATHER_DUCKDB_PATH=/app/.data/weather.duckdb \
-  weather-site:local
+docker run --rm -p 8000:8000 weather-site:local
 ```
 
 Open:
 - `http://localhost:8000`
 - `http://localhost:8000/api/health`
-
-Optional env vars:
-- `ZIPCODEBASE_API_KEY` (required)
-- `WEATHER_DUCKDB_PATH` (optional, defaults to `.data/weather.duckdb`)
 
 ## CI Image Publish
 GitHub Actions workflow publishes container images to GHCR on push to `main`:

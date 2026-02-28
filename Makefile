@@ -1,7 +1,6 @@
 .PHONY: dev dev-docker dev-docker-down
 
 dev:
-	@test -f backend/.env || (echo "Missing backend/.env. Copy backend/.env.sample and set ZIPCODEBASE_API_KEY."; exit 1)
 	@command -v uv >/dev/null 2>&1 || (echo "uv is required for local dev."; exit 1)
 	@command -v pnpm >/dev/null 2>&1 || (echo "pnpm is required for local dev."; exit 1)
 	@echo "Starting backend (8000) and frontend (5173) with hot reload..."
@@ -15,7 +14,6 @@ dev:
 	wait $$BACKEND_PID $$FRONTEND_PID
 
 dev-docker:
-	@test -f backend/.env || (echo "Missing backend/.env. Copy backend/.env.sample and set ZIPCODEBASE_API_KEY."; exit 1)
 	@set -e; \
 	docker compose -f docker-compose.dev.yml up --build -d; \
 	echo "Waiting for frontend at http://localhost:5173 ..."; \

@@ -1,9 +1,5 @@
-"""App API router package."""
+"""Compatibility shim for legacy app.api imports."""
 
-from fastapi import APIRouter
+from fastapi_app.api import router
 
-from app.api.weather import router as weather_router
-
-router = APIRouter()
-router.include_router(weather_router)
-
+__all__ = ["router"]
