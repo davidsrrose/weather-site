@@ -1,7 +1,6 @@
 """Shared API error payload helpers."""
 
 
-
 def upstream_error_detail(
     message: str, upstream_status: int | None = None
 ) -> dict[str, object]:

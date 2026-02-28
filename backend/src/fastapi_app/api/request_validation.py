@@ -1,6 +1,5 @@
 """Shared request validation helpers for API endpoints."""
 
-
 from fastapi import HTTPException
 
 

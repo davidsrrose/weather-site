@@ -34,7 +34,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 FRONTEND_DIST_DIR = REPO_ROOT / "frontend" / "dist"
 
 if FRONTEND_DIST_DIR.exists():
-    app.mount("/", SPAStaticFiles(directory=FRONTEND_DIST_DIR, html=True), name="frontend")
+    app.mount(
+        "/", SPAStaticFiles(directory=FRONTEND_DIST_DIR, html=True), name="frontend"
+    )
 else:
     logger.info("frontend_dist_missing path=%s", FRONTEND_DIST_DIR)
 

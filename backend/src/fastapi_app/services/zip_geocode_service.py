@@ -1,6 +1,5 @@
 """ZIP geocode service with DuckDB-backed ZIP cache."""
 
-
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 import logging
@@ -128,7 +127,9 @@ def _upsert_cached_zip(
     )
 
 
-def _parse_open_meteo_result(zip_code: str, first_match: dict[str, Any]) -> ZipGeocodeResult:
+def _parse_open_meteo_result(
+    zip_code: str, first_match: dict[str, Any]
+) -> ZipGeocodeResult:
     """Normalize one Open-Meteo result object into ZIP response model."""
     latitude = first_match.get("latitude")
     longitude = first_match.get("longitude")

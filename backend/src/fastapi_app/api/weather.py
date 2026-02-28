@@ -1,6 +1,5 @@
 """Weather API routes."""
 
-
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -55,10 +54,12 @@ def get_hourly_weather_payload(lat: float, lon: float) -> dict[str, Any]:
         lat=lat,
         lon=lon,
         duckdb_path=config.duckdb_path,
-        fetch_periods=lambda resolved_lat, resolved_lon: fetch_hourly_periods_for_location(
-            resolved_lat,
-            resolved_lon,
-            config.weather_hourly_http_timeout_seconds,
+        fetch_periods=lambda resolved_lat, resolved_lon: (
+            fetch_hourly_periods_for_location(
+                resolved_lat,
+                resolved_lon,
+                config.weather_hourly_http_timeout_seconds,
+            )
         ),
         cache_ttl_minutes=config.forecast_cache_ttl_minutes,
     )

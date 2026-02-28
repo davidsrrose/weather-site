@@ -1,6 +1,5 @@
 """DuckDB-backed cache for hourly forecast snapshots."""
 
-
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 import hashlib
@@ -23,7 +22,9 @@ def _compute_payload_version() -> str:
 
     This auto-invalidates forecast snapshots when normalization code changes.
     """
-    pipeline_file = Path(__file__).resolve().parents[1] / "pipelines" / "weather_hourly.py"
+    pipeline_file = (
+        Path(__file__).resolve().parents[1] / "pipelines" / "weather_hourly.py"
+    )
     try:
         source = pipeline_file.read_bytes()
     except OSError:

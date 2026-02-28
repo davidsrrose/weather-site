@@ -1,18 +1,12 @@
 """Tests for DuckDB-backed forecast snapshot caching."""
 
-
 from datetime import UTC, datetime, timedelta
 import json
 from pathlib import Path
-import sys
 import tempfile
 import unittest
 
 import duckdb
-
-BACKEND_SRC_PATH = Path(__file__).resolve().parents[1] / "src"
-if str(BACKEND_SRC_PATH) not in sys.path:
-    sys.path.insert(0, str(BACKEND_SRC_PATH))
 
 from fastapi_app.services.forecast_snapshot_cache import (
     build_location_key,
@@ -35,7 +29,9 @@ class ForecastSnapshotCacheTests(unittest.TestCase):
             def _fetch_periods(_: float, __: float) -> list[dict[str, object]]:
                 nonlocal fetch_call_count
                 fetch_call_count += 1
-                return [{"startTime": "2026-02-27T16:00:00-07:00", "call": fetch_call_count}]
+                return [
+                    {"startTime": "2026-02-27T16:00:00-07:00", "call": fetch_call_count}
+                ]
 
             first_payload = get_or_refresh_hourly_forecast(
                 lat=lat,
@@ -65,7 +61,9 @@ class ForecastSnapshotCacheTests(unittest.TestCase):
             def _fetch_periods(_: float, __: float) -> list[dict[str, object]]:
                 nonlocal fetch_call_count
                 fetch_call_count += 1
-                return [{"startTime": "2026-02-27T16:00:00-07:00", "call": fetch_call_count}]
+                return [
+                    {"startTime": "2026-02-27T16:00:00-07:00", "call": fetch_call_count}
+                ]
 
             first_payload = get_or_refresh_hourly_forecast(
                 lat=lat,
@@ -75,7 +73,9 @@ class ForecastSnapshotCacheTests(unittest.TestCase):
             )
 
             location_key = build_location_key(lat=lat, lon=lon)
-            stale_generated_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=11)
+            stale_generated_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(
+                minutes=11
+            )
             connection = duckdb.connect(db_path)
             try:
                 connection.execute(
@@ -97,7 +97,9 @@ class ForecastSnapshotCacheTests(unittest.TestCase):
             )
 
         self.assertEqual(fetch_call_count, 2)
-        self.assertNotEqual(first_payload["generated_at"], second_payload["generated_at"])
+        self.assertNotEqual(
+            first_payload["generated_at"], second_payload["generated_at"]
+        )
         self.assertEqual(first_payload["periods"][0]["call"], 1)
         self.assertEqual(second_payload["periods"][0]["call"], 2)
 

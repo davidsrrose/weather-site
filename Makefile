@@ -1,4 +1,22 @@
-.PHONY: dev dev-docker dev-docker-down
+.PHONY: dev dev-docker dev-docker-down setup-backend lint-backend format-backend format-check-backend test-backend dev-backend
+
+setup-backend:
+	uv sync --frozen
+
+lint-backend:
+	uv run ruff check backend
+
+format-backend:
+	uv run ruff format backend
+
+format-check-backend:
+	uv run ruff format --check backend
+
+test-backend:
+	PYTHONPATH=backend/src uv run python -m unittest discover -s backend/tests -p "test_*.py" -v
+
+dev-backend:
+	PYTHONPATH=backend/src uv run uvicorn fastapi_app.main:app --reload --port 8000
 
 dev:
 	@command -v uv >/dev/null 2>&1 || (echo "uv is required for local dev."; exit 1)

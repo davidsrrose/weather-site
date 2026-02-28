@@ -1,6 +1,5 @@
 """dlt source/resource for weather.gov hourly forecast ingestion."""
 
-
 from collections.abc import Iterable
 import re
 from typing import Any
@@ -40,7 +39,9 @@ def parse_wind_speed_mph(wind_speed: str | None) -> int | None:
     if not wind_speed:
         return None
 
-    speed_parts: list[int] = [int(match) for match in WIND_SPEED_PATTERN.findall(wind_speed)]
+    speed_parts: list[int] = [
+        int(match) for match in WIND_SPEED_PATTERN.findall(wind_speed)
+    ]
     if not speed_parts:
         return None
 
@@ -98,7 +99,12 @@ def _estimate_sky_cover_from_short_forecast(short_forecast: str | None) -> int |
         return None
 
     text = short_forecast.lower()
-    if "overcast" in text or "cloudy" in text and "mostly" not in text and "partly" not in text:
+    if (
+        "overcast" in text
+        or "cloudy" in text
+        and "mostly" not in text
+        and "partly" not in text
+    ):
         return 100
     if "mostly cloudy" in text:
         return 75
@@ -185,10 +191,14 @@ def _get_json(client: httpx.Client, url: str) -> dict[str, Any]:
     try:
         payload: Any = response.json()
     except ValueError as exc:
-        raise WeatherHourlyPipelineError(f"Invalid JSON payload from URL: {url}") from exc
+        raise WeatherHourlyPipelineError(
+            f"Invalid JSON payload from URL: {url}"
+        ) from exc
 
     if not isinstance(payload, dict):
-        raise WeatherHourlyPipelineError(f"Expected JSON object payload from URL: {url}")
+        raise WeatherHourlyPipelineError(
+            f"Expected JSON object payload from URL: {url}"
+        )
 
     return payload
 
@@ -214,7 +224,9 @@ def fetch_hourly_periods(
 
     properties: Any = points_payload.get("properties")
     if not isinstance(properties, dict):
-        raise WeatherHourlyPipelineError("weather.gov points payload missing properties")
+        raise WeatherHourlyPipelineError(
+            "weather.gov points payload missing properties"
+        )
 
     forecast_hourly_url: Any = properties.get("forecastHourly")
     if not isinstance(forecast_hourly_url, str) or not forecast_hourly_url:
@@ -257,7 +269,9 @@ def weather_hourly_resource(
         Normalized hourly period dictionaries.
     """
     with httpx.Client(timeout=http_timeout_seconds) as client:
-        rows: list[dict[str, Any]] = fetch_hourly_periods(lat=lat, lon=lon, client=client)
+        rows: list[dict[str, Any]] = fetch_hourly_periods(
+            lat=lat, lon=lon, client=client
+        )
 
     for row in rows:
         yield row

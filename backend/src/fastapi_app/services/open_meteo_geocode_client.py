@@ -1,6 +1,5 @@
 """Shared Open-Meteo geocoding HTTP client helpers."""
 
-
 from typing import Any
 
 import httpx
@@ -47,9 +46,7 @@ async def fetch_us_geocode_results(
             response = await client.get(OPEN_METEO_GEOCODING_URL, params=params)
             response.raise_for_status()
     except httpx.HTTPError as exc:
-        raise OpenMeteoGeocodeClientError(
-            "Open-Meteo geocode request failed."
-        ) from exc
+        raise OpenMeteoGeocodeClientError("Open-Meteo geocode request failed.") from exc
 
     try:
         payload: Any = response.json()

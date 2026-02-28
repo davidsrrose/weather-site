@@ -1,21 +1,11 @@
 """Tests for weather hourly API route behavior."""
 
-
 from pathlib import Path
-import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
-
-BACKEND_SRC_PATH = Path(__file__).resolve().parents[1] / "src"
-if str(BACKEND_SRC_PATH) not in sys.path:
-    sys.path.insert(0, str(BACKEND_SRC_PATH))
-
-BACKEND_ROOT_PATH = Path(__file__).resolve().parents[1]
-if str(BACKEND_ROOT_PATH) not in sys.path:
-    sys.path.insert(0, str(BACKEND_ROOT_PATH))
 
 from fastapi_app.pipelines.weather_hourly import WeatherHourlyPipelineError
 from fastapi_app.main import app
@@ -62,7 +52,9 @@ class WeatherHourlyRouteTests(unittest.TestCase):
     def test_weather_hourly_invalid_latitude_returns_422(self) -> None:
         """Endpoint returns 422 for invalid latitude input."""
         with TestClient(app) as client:
-            response = client.get("/api/weather/hourly", params={"lat": 95, "lon": -105.2211})
+            response = client.get(
+                "/api/weather/hourly", params={"lat": 95, "lon": -105.2211}
+            )
 
         self.assertEqual(response.status_code, 422)
         payload = response.json()
@@ -71,7 +63,9 @@ class WeatherHourlyRouteTests(unittest.TestCase):
     def test_weather_hourly_invalid_longitude_returns_422(self) -> None:
         """Endpoint returns 422 for invalid longitude input."""
         with TestClient(app) as client:
-            response = client.get("/api/weather/hourly", params={"lat": 39.7555, "lon": -185})
+            response = client.get(
+                "/api/weather/hourly", params={"lat": 39.7555, "lon": -185}
+            )
 
         self.assertEqual(response.status_code, 422)
         payload = response.json()
@@ -92,11 +86,14 @@ class WeatherHourlyRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 502)
         payload = response.json()
-        self.assertEqual(payload["detail"], {
-            "error": "upstream_error",
-            "message": "Unable to load hourly forecast right now.",
-            "upstream_status": 503,
-        })
+        self.assertEqual(
+            payload["detail"],
+            {
+                "error": "upstream_error",
+                "message": "Unable to load hourly forecast right now.",
+                "upstream_status": 503,
+            },
+        )
 
     def test_weather_hourly_two_quick_calls_use_cache(self) -> None:
         """Two quick endpoint calls should fetch upstream periods once."""
@@ -109,7 +106,9 @@ class WeatherHourlyRouteTests(unittest.TestCase):
         ) -> list[dict[str, object]]:
             nonlocal fetch_call_count
             fetch_call_count += 1
-            return [{"startTime": "2026-02-27T16:00:00-07:00", "call": fetch_call_count}]
+            return [
+                {"startTime": "2026-02-27T16:00:00-07:00", "call": fetch_call_count}
+            ]
 
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = str(Path(temp_dir) / "weather.duckdb")

@@ -1,6 +1,5 @@
 """US city suggestion service for location search."""
 
-
 from dataclasses import asdict, dataclass
 import re
 from typing import Any
@@ -123,9 +122,7 @@ async def search_us_city_suggestions(
             request_timeout_seconds=request_timeout_seconds,
         )
     except OpenMeteoGeocodeClientError as exc:
-        raise CityGeocodeUpstreamError(
-            "Upstream city search request failed."
-        ) from exc
+        raise CityGeocodeUpstreamError("Upstream city search request failed.") from exc
 
     dedupe_keys: set[tuple[str, str]] = set()
     suggestions: list[CitySuggestion] = []
