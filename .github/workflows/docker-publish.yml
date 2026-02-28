@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - staging
 
 permissions:
   contents: read
@@ -32,8 +33,10 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=latest
-            type=sha,format=short
+            type=raw,value=prod,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=stg,enable=${{ github.ref == 'refs/heads/staging' }}
+            type=sha,format=short,prefix=sha-
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6

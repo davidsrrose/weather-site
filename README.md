@@ -1,5 +1,5 @@
 # Weather.gov (but better)
-Website to pull hourly weather data from weather.gov API, display in a mobile-friendly and modern UI.
+Website to replicate weather.gov's hourly weather forecast graphs, but with a mobile-friendly and modern UI.
 
 ## Overview
 This repository is a POC monorepo for ingesting weather data and presenting it in a modern web experience.
