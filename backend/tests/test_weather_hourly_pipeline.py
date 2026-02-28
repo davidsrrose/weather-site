@@ -92,6 +92,7 @@ class WeatherHourlyPipelineTests(unittest.TestCase):
             "startTime",
             "temperature",
             "temperatureUnit",
+            "isDaytime",
             "shortForecast",
             "windSpeedMph",
             "windDirection",
@@ -106,10 +107,12 @@ class WeatherHourlyPipelineTests(unittest.TestCase):
 
         self.assertEqual(rows[0]["windSpeedMph"], 5)
         self.assertEqual(rows[1]["windSpeedMph"], 8)
+        self.assertTrue(rows[0]["isDaytime"])
+        self.assertFalse(rows[1]["isDaytime"])
         self.assertEqual(rows[0]["probabilityOfPrecipitation"], 70)
         self.assertEqual(rows[0]["skyCover"], 80)
         self.assertIsNone(rows[1]["probabilityOfPrecipitation"])
-        self.assertIsNone(rows[1]["skyCover"])
+        self.assertEqual(rows[1]["skyCover"], 75)
         self.assertEqual(rows[0]["startTime"], "2026-02-27T16:00:00-07:00")
 
     def test_normalize_hourly_period_missing_fields_do_not_crash(self) -> None:
@@ -125,9 +128,10 @@ class WeatherHourlyPipelineTests(unittest.TestCase):
 
         self.assertEqual(normalized["startTime"], "2026-02-27T18:00:00-07:00")
         self.assertEqual(normalized["temperature"], 28)
+        self.assertIsNone(normalized["isDaytime"])
         self.assertIsNone(normalized["windSpeedMph"])
         self.assertIsNone(normalized["probabilityOfPrecipitation"])
-        self.assertIsNone(normalized["skyCover"])
+        self.assertEqual(normalized["skyCover"], 75)
         self.assertIsNone(normalized["relativeHumidity"])
         self.assertIsNone(normalized["icon"])
 
@@ -153,6 +157,20 @@ class WeatherHourlyPipelineTests(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0]["startTime"], "2026-02-27T16:00:00-07:00")
         self.assertEqual(rows[0]["windSpeedMph"], 5)
+
+    def test_normalize_hourly_period_estimates_sky_cover_when_missing(self) -> None:
+        """Sky cover is estimated from icon when measurement is missing."""
+        period = {
+            "startTime": "2026-02-27T18:00:00-07:00",
+            "temperature": 28,
+            "temperatureUnit": "F",
+            "shortForecast": "Mostly Cloudy",
+            "icon": "https://api.weather.gov/icons/land/night/bkn?size=medium",
+        }
+
+        normalized = normalize_hourly_period(period)
+
+        self.assertEqual(normalized["skyCover"], 75)
 
 
 if __name__ == "__main__":

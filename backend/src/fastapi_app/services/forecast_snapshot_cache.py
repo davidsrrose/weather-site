@@ -3,8 +3,10 @@
 
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+import hashlib
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 import duckdb
@@ -14,6 +16,22 @@ from fastapi_app.services.duckdb import ensure_duckdb_parent_dir
 logger = logging.getLogger("uvicorn.error")
 
 DEFAULT_FORECAST_CACHE_TTL_MINUTES = 10
+
+
+def _compute_payload_version() -> str:
+    """Compute cache payload version from pipeline source content.
+
+    This auto-invalidates forecast snapshots when normalization code changes.
+    """
+    pipeline_file = Path(__file__).resolve().parents[1] / "pipelines" / "weather_hourly.py"
+    try:
+        source = pipeline_file.read_bytes()
+    except OSError:
+        return "unknown"
+    return hashlib.sha256(source).hexdigest()[:12]
+
+
+FORECAST_PAYLOAD_VERSION = _compute_payload_version()
 
 
 def build_location_key(lat: float, lon: float) -> str:
@@ -43,9 +61,13 @@ def _ensure_forecast_snapshot_table(connection: duckdb.DuckDBPyConnection) -> No
             lat DOUBLE,
             lon DOUBLE,
             generated_at TIMESTAMP,
-            payload_json TEXT
+            payload_json TEXT,
+            payload_version TEXT
         )
         """
+    )
+    connection.execute(
+        "ALTER TABLE forecast_snapshots ADD COLUMN IF NOT EXISTS payload_version TEXT"
     )
 
 
@@ -71,8 +93,9 @@ def _read_cached_payload(
         SELECT generated_at, payload_json
         FROM forecast_snapshots
         WHERE location_key = ?
+          AND payload_version = ?
         """,
-        [location_key],
+        [location_key, FORECAST_PAYLOAD_VERSION],
     ).fetchone()
 
     if row is None:
@@ -109,16 +132,25 @@ def _upsert_snapshot(
             lat,
             lon,
             generated_at,
-            payload_json
+            payload_json,
+            payload_version
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT (location_key) DO UPDATE SET
             lat = EXCLUDED.lat,
             lon = EXCLUDED.lon,
             generated_at = EXCLUDED.generated_at,
-            payload_json = EXCLUDED.payload_json
+            payload_json = EXCLUDED.payload_json,
+            payload_version = EXCLUDED.payload_version
         """,
-        [location_key, lat, lon, generated_at, payload_json],
+        [
+            location_key,
+            lat,
+            lon,
+            generated_at,
+            payload_json,
+            FORECAST_PAYLOAD_VERSION,
+        ],
     )
 
 

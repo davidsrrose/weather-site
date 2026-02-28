@@ -337,9 +337,12 @@ function resolveYAxisDomain(metric: MetricKey, values: number[]): [number, numbe
   }
 
   if (metric === "temp") {
-    const maxTemp = values.length > 0 ? Math.max(...values) : 90
-    const top = maxTemp > 90 ? maxTemp + 10 : 90
-    return [0, top]
+    if (values.length === 0) {
+      return [0, 10]
+    }
+    const minValue = Math.min(...values)
+    const maxValue = Math.max(...values)
+    return [Math.floor(minValue - 5), Math.ceil(maxValue + 10)]
   }
 
   if (metric === "humidity") {
@@ -469,7 +472,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
 
   const chartPeriods = useMemo<ChartPeriod[]>(() => {
     return periods.map((period) => {
-      const dayPhase = inferForecastDayPhase(period.icon)
+      const dayPhase = inferForecastDayPhase(period.icon, period.isDaytime)
       return {
         period,
         startTime: period.startTime,
@@ -508,9 +511,9 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
     return chartPeriods.map((chartPeriod) => {
       return {
         startTime: chartPeriod.startTime,
-        precipPotential: chartPeriod.period.probabilityOfPrecipitation,
-        skyCover: chartPeriod.period.skyCover,
-        relativeHumidity: chartPeriod.period.relativeHumidity,
+        precipPotential: chartPeriod.period.probabilityOfPrecipitation ?? null,
+        skyCover: chartPeriod.period.skyCover ?? null,
+        relativeHumidity: chartPeriod.period.relativeHumidity ?? null,
         dayPhase: chartPeriod.dayPhase,
       }
     })

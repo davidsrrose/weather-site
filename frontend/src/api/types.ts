@@ -36,6 +36,7 @@ export type HourlyPeriod = {
   startTime: string
   temperature: number | null
   temperatureUnit: string | null
+  isDaytime: boolean | null
   shortForecast: string | null
   windSpeedMph: number | null
   windDirection: string | null

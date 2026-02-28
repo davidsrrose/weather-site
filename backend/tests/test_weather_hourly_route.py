@@ -34,10 +34,12 @@ class WeatherHourlyRouteTests(unittest.TestCase):
                     "startTime": "2026-02-27T16:00:00-07:00",
                     "temperature": 32,
                     "temperatureUnit": "F",
+                    "isDaytime": True,
                     "shortForecast": "Snow Showers Likely",
                     "windSpeedMph": 5,
                     "windDirection": "NW",
                     "probabilityOfPrecipitation": 70,
+                    "skyCover": 80,
                     "relativeHumidity": 63,
                     "icon": "https://api.weather.gov/icons/land/day/snow,70?size=medium",
                 }

@@ -165,7 +165,16 @@ export function formatForecastRangeLabel(startTime: string, endTime: string): st
 
 export type ForecastDayPhase = "day" | "night" | "unknown"
 
-export function inferForecastDayPhase(iconUrl: string | null): ForecastDayPhase {
+export function inferForecastDayPhase(
+  iconUrl: string | null,
+  isDaytime: boolean | null = null
+): ForecastDayPhase {
+  if (isDaytime === true) {
+    return "day"
+  }
+  if (isDaytime === false) {
+    return "night"
+  }
   if (!iconUrl) {
     return "unknown"
   }

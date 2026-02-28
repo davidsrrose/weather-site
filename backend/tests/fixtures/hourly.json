@@ -4,6 +4,7 @@
       {
         "number": 1,
         "startTime": "2026-02-27T16:00:00-07:00",
+        "isDaytime": true,
         "temperature": 32,
         "temperatureUnit": "F",
         "shortForecast": "Snow Showers Likely",
@@ -26,6 +27,7 @@
       {
         "number": 2,
         "startTime": "2026-02-27T17:00:00-07:00",
+        "isDaytime": false,
         "temperature": 30,
         "temperatureUnit": "F",
         "shortForecast": "Cloudy",

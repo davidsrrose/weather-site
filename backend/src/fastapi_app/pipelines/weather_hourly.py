@@ -9,6 +9,7 @@ import dlt
 import httpx
 
 WIND_SPEED_PATTERN = re.compile(r"\d+")
+ICON_CODE_PATTERN = re.compile(r"/(?:day|night)/([^?]+)")
 WEATHER_GOV_BASE_URL = "https://api.weather.gov"
 DEFAULT_HTTP_TIMEOUT_SECONDS = 15.0
 
@@ -68,6 +69,48 @@ def _extract_measurement_value(measurement: Any) -> float | int | None:
     return None
 
 
+def _estimate_sky_cover_from_icon(icon_url: str | None) -> int | None:
+    """Estimate sky cover percentage from weather.gov icon code."""
+    if not icon_url:
+        return None
+
+    match = ICON_CODE_PATTERN.search(icon_url)
+    if not match:
+        return None
+
+    icon_code = match.group(1).split(",")[0].lower()
+    if icon_code in {"skc", "clr"}:
+        return 0
+    if icon_code == "few":
+        return 20
+    if icon_code == "sct":
+        return 45
+    if icon_code == "bkn":
+        return 75
+    if icon_code == "ovc":
+        return 100
+    return None
+
+
+def _estimate_sky_cover_from_short_forecast(short_forecast: str | None) -> int | None:
+    """Estimate sky cover percentage from short forecast text."""
+    if not short_forecast:
+        return None
+
+    text = short_forecast.lower()
+    if "overcast" in text or "cloudy" in text and "mostly" not in text and "partly" not in text:
+        return 100
+    if "mostly cloudy" in text:
+        return 75
+    if "partly cloudy" in text or "partly sunny" in text:
+        return 45
+    if "mostly clear" in text or "mostly sunny" in text:
+        return 20
+    if "clear" in text or "sunny" in text:
+        return 0
+    return None
+
+
 def normalize_hourly_period(period: dict[str, Any]) -> dict[str, Any]:
     """Normalize one hourly period from weather.gov into pipeline schema.
 
@@ -77,17 +120,25 @@ def normalize_hourly_period(period: dict[str, Any]) -> dict[str, Any]:
     Returns:
         Normalized period dictionary with stable keys.
     """
+    sky_cover = _extract_measurement_value(period.get("skyCover"))
+    if not isinstance(sky_cover, (int, float)):
+        sky_cover = _estimate_sky_cover_from_icon(period.get("icon"))
+    if not isinstance(sky_cover, (int, float)):
+        sky_cover = _estimate_sky_cover_from_short_forecast(period.get("shortForecast"))
+    is_daytime: Any = period.get("isDaytime")
+
     return {
         "startTime": period.get("startTime"),
         "temperature": period.get("temperature"),
         "temperatureUnit": period.get("temperatureUnit"),
+        "isDaytime": is_daytime if isinstance(is_daytime, bool) else None,
         "shortForecast": period.get("shortForecast"),
         "windSpeedMph": parse_wind_speed_mph(period.get("windSpeed")),
         "windDirection": period.get("windDirection"),
         "probabilityOfPrecipitation": _extract_measurement_value(
             period.get("probabilityOfPrecipitation")
         ),
-        "skyCover": _extract_measurement_value(period.get("skyCover")),
+        "skyCover": sky_cover,
         "relativeHumidity": _extract_measurement_value(period.get("relativeHumidity")),
         "icon": period.get("icon"),
     }
