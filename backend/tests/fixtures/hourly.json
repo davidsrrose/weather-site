@@ -13,6 +13,10 @@
           "unitCode": "wmoUnit:percent",
           "value": 70
         },
+        "skyCover": {
+          "unitCode": "wmoUnit:percent",
+          "value": 80
+        },
         "relativeHumidity": {
           "unitCode": "wmoUnit:percent",
           "value": 63
@@ -28,6 +32,10 @@
         "windSpeed": "5 to 10 mph",
         "windDirection": "N",
         "probabilityOfPrecipitation": {
+          "unitCode": "wmoUnit:percent",
+          "value": null
+        },
+        "skyCover": {
           "unitCode": "wmoUnit:percent",
           "value": null
         },

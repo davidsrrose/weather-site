@@ -31,6 +31,10 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    --forecast-day-surface: 0 0% 100%;
+    --forecast-night-surface: 0 0% 74%;
+    --forecast-grid-line-minor: 0 0% 70%;
+    --forecast-grid-line-major: 0 0% 58%;
   }
 
   .dark {
@@ -58,6 +62,10 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    --forecast-day-surface: 0 0% 19%;
+    --forecast-night-surface: 0 0% 4%;
+    --forecast-grid-line-minor: 0 0% 30%;
+    --forecast-grid-line-major: 0 0% 42%;
   }
 }
 

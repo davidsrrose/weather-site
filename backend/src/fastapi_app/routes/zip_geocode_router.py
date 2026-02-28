@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from config import config
 from fastapi_app.routes.error_responses import upstream_error_detail
 from fastapi_app.services.zip_geocode_service import (
+    ZipGeocodeNotFoundError,
     ZipGeocodeUpstreamError,
     get_zip_geocode,
 )
@@ -42,6 +43,15 @@ async def get_zip_geocode_endpoint(zip_code: str) -> dict[str, object]:
             zip_cache_ttl_days=config.zip_geocode_cache_ttl_days,
             request_timeout_seconds=config.open_meteo_geocode_http_timeout_seconds,
         )
+    except ZipGeocodeNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "zip_not_found",
+                "message": f"No city found for ZIP {zip_code}.",
+                "zip": zip_code,
+            },
+        ) from exc
     except ZipGeocodeUpstreamError as exc:
         raise HTTPException(
             status_code=502,

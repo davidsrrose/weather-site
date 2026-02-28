@@ -2,6 +2,7 @@
 
 
 from dataclasses import asdict, dataclass
+import re
 from typing import Any
 
 from fastapi_app.services.open_meteo_geocode_client import (
@@ -11,6 +12,7 @@ from fastapi_app.services.open_meteo_geocode_client import (
 
 DEFAULT_CITY_SUGGESTION_LIMIT = 8
 DEFAULT_CITY_SUGGESTION_TIMEOUT_SECONDS = 8.0
+ZIP_CODE_PATTERN = re.compile(r"^\d{5}$")
 
 
 class CityGeocodeUpstreamError(Exception):
@@ -24,6 +26,7 @@ class CitySuggestion:
     label: str
     city: str
     state: str
+    zip: str | None
     lat: float
     lon: float
 
@@ -57,13 +60,36 @@ def _normalize_suggestion(item: dict[str, Any]) -> CitySuggestion | None:
     ):
         return None
 
+    zip_code = _extract_zip_code(item.get("postcodes"))
+
     return CitySuggestion(
         label=f"{city}, {state}",
         city=city,
         state=state,
+        zip=zip_code,
         lat=float(latitude),
         lon=float(longitude),
     )
+
+
+def _extract_zip_code(raw_postcodes: Any) -> str | None:
+    """Extract first valid 5-digit ZIP code from Open-Meteo postcodes.
+
+    Args:
+        raw_postcodes: Upstream `postcodes` field from one geocode result.
+
+    Returns:
+        First valid 5-digit ZIP code, or None when unavailable.
+    """
+    if not isinstance(raw_postcodes, list):
+        return None
+
+    raw_postcode: Any
+    for raw_postcode in raw_postcodes:
+        postcode = str(raw_postcode).strip()
+        if ZIP_CODE_PATTERN.fullmatch(postcode):
+            return postcode
+    return None
 
 
 async def search_us_city_suggestions(

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 
-import type { CitySuggestion, GeocodeResponse } from "@/api/types"
+import type { LocationSuggestion } from "@/api/types"
 
 export type LocationKind = "geo" | "favorite" | "zip" | "city"
 
@@ -83,9 +83,10 @@ export function useLocationState() {
       : "Requesting location permission..."
   })
   const [showLocationControls, setShowLocationControls] = useState(false)
-  const [zipInput, setZipInput] = useState("")
-  const [zipMessage, setZipMessage] = useState("Enter a ZIP code to set location.")
-  const [cityQuery, setCityQuery] = useState("")
+  const [locationQuery, setLocationQuery] = useState("")
+  const [locationMessage, setLocationMessage] = useState(
+    "Enter a city, state, or ZIP code."
+  )
 
   const applyLocation = useCallback((location: Location, statusMessage: string) => {
     setCurrentLocation(location)
@@ -98,32 +99,35 @@ export function useLocationState() {
     }
   }, [])
 
-  const applyZipResult = useCallback(
-    (result: GeocodeResponse) => {
+  const applySearchSuggestion = useCallback(
+    (suggestion: LocationSuggestion) => {
+      const clarifiedLabel = suggestion.zip
+        ? `${suggestion.city}, ${suggestion.state} (${suggestion.zip})`
+        : `${suggestion.city}, ${suggestion.state}`
       const location: Location = {
-        kind: "zip",
-        label: `${result.city}, ${result.state}`,
-        lat: result.lat,
-        lon: result.lon,
-        zip: result.zip,
-      }
-      applyLocation(location, `ZIP set to ${result.zip} (${result.source}).`)
-      setZipMessage(`Loaded ${result.city}, ${result.state} from ZIP ${result.zip}.`)
-      setShowLocationControls(false)
-    },
-    [applyLocation]
-  )
-
-  const applyCitySuggestion = useCallback(
-    (suggestion: CitySuggestion) => {
-      const location: Location = {
-        kind: "city",
-        label: suggestion.label,
+        kind: suggestion.kind,
+        label: clarifiedLabel,
         lat: suggestion.lat,
         lon: suggestion.lon,
+        zip: suggestion.zip,
       }
-      applyLocation(location, `Using city: ${suggestion.label}.`)
-      setCityQuery(suggestion.label)
+
+      if (suggestion.kind === "zip" && suggestion.zip) {
+        applyLocation(location, `Using ZIP ${suggestion.zip}: ${suggestion.label}.`)
+        setLocationMessage(
+          `Selected ZIP ${suggestion.zip} -> ${suggestion.city}, ${suggestion.state}.`
+        )
+      } else if (suggestion.zip) {
+        applyLocation(location, `Using city: ${suggestion.label} (ZIP ${suggestion.zip}).`)
+        setLocationMessage(
+          `Selected ${suggestion.city}, ${suggestion.state} (ZIP ${suggestion.zip}).`
+        )
+      } else {
+        applyLocation(location, `Using city: ${suggestion.label}.`)
+        setLocationMessage(`Selected ${suggestion.city}, ${suggestion.state}.`)
+      }
+
+      setLocationQuery(clarifiedLabel)
       setShowLocationControls(false)
     },
     [applyLocation]
@@ -137,6 +141,8 @@ export function useLocationState() {
       }
 
       applyLocation(selectedFavorite, `Using favorite: ${selectedFavorite.label}.`)
+      setLocationQuery(selectedFavorite.label)
+      setLocationMessage(`Selected favorite: ${selectedFavorite.label}.`)
       setShowLocationControls(false)
     },
     [applyLocation, favorites]
@@ -187,14 +193,11 @@ export function useLocationState() {
     locationStatus,
     showLocationControls,
     setShowLocationControls,
-    zipInput,
-    setZipInput,
-    zipMessage,
-    setZipMessage,
-    cityQuery,
-    setCityQuery,
+    locationQuery,
+    setLocationQuery,
+    locationMessage,
+    setLocationMessage,
     selectFavorite,
-    applyZipResult,
-    applyCitySuggestion,
+    applySearchSuggestion,
   }
 }

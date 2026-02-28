@@ -24,6 +24,10 @@ class ZipGeocodeUpstreamError(Exception):
     """Raised when upstream geocoding cannot return usable data."""
 
 
+class ZipGeocodeNotFoundError(ZipGeocodeUpstreamError):
+    """Raised when a ZIP lookup returns no geocode results."""
+
+
 @dataclass(frozen=True)
 class ZipGeocodeResult:
     """Normalized geocode payload returned by the API."""
@@ -166,7 +170,7 @@ async def _fetch_upstream_zip_geocode(
         raise ZipGeocodeUpstreamError("Upstream geocode request failed.") from exc
 
     if not raw_results:
-        raise ZipGeocodeUpstreamError("No upstream geocode results for ZIP.")
+        raise ZipGeocodeNotFoundError("No upstream geocode results for ZIP.")
 
     return _parse_open_meteo_result(zip_code=zip_code, first_match=raw_results[0])
 

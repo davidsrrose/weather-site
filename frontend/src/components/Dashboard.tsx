@@ -1,12 +1,8 @@
 import type { FormEvent } from "react"
 import { RotateCcw } from "lucide-react"
 
-import type { CitySuggestion, HourlyPeriod } from "@/api/types"
+import type { HourlyPeriod, LocationSuggestion } from "@/api/types"
 import { HourlyGraphPanel } from "@/components/HourlyGraphPanel"
-import {
-  HourlyTimeline,
-  type TimelineWindow,
-} from "@/components/HourlyTimeline"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -30,18 +26,14 @@ type DashboardProps = {
   showLocationControls: boolean
   onToggleLocationControls: () => void
   onFavoriteChange: (label: string) => void
-  zipInput: string
-  onZipInputChange: (value: string) => void
-  onZipSubmit: (event: FormEvent<HTMLFormElement>) => void
-  cityQuery: string
-  onCityQueryChange: (value: string) => void
-  citySuggestions: CitySuggestion[]
-  isCitySuggestionsLoading: boolean
-  citySuggestionsError: string
-  onCitySuggestionSelect: (suggestion: CitySuggestion) => void
-  zipMessage: string
-  isZipLoading: boolean
-  isZipError: boolean
+  locationQuery: string
+  onLocationQueryChange: (value: string) => void
+  onLocationSearchSubmit: (event: FormEvent<HTMLFormElement>) => void
+  locationSuggestions: LocationSuggestion[]
+  isLocationSuggestionsLoading: boolean
+  locationSuggestionsError: string
+  onLocationSuggestionSelect: (suggestion: LocationSuggestion) => void
+  locationMessage: string
   onRefreshForecast: () => void
   canRefreshForecast: boolean
   isRefreshingForecast: boolean
@@ -49,12 +41,8 @@ type DashboardProps = {
   isForecastError: boolean
   forecastErrorMessage: string
   periods: HourlyPeriod[]
-  nowPeriod: HourlyPeriod | null
   generatedAt: string | null
   healthMessage: string
-  timelineWindowStartIndex: number
-  timelineWindowSize: number
-  onTimelineWindowChange: (window: TimelineWindow) => void
 }
 
 type ForecastErrorStateProps = {
@@ -93,32 +81,6 @@ function ForecastErrorState({
   )
 }
 
-function NowCardsSkeleton() {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <Card className="min-h-[170px]">
-        <CardHeader>
-          <Skeleton className="h-5 w-36" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Skeleton className="h-12 w-24" />
-          <Skeleton className="h-4 w-40" />
-        </CardContent>
-      </Card>
-      <Card className="min-h-[170px]">
-        <CardHeader>
-          <Skeleton className="h-5 w-24" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-4/5" />
-          <Skeleton className="h-4 w-3/5" />
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
 function GraphPanelSkeleton() {
   const barHeights = [44, 70, 58, 86, 52, 92, 64, 76, 48, 88, 60, 72]
 
@@ -138,67 +100,6 @@ function GraphPanelSkeleton() {
   )
 }
 
-function TimelineRowsSkeleton() {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className="rounded-md border p-3">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="mt-2 h-3 w-36" />
-          <Skeleton className="mt-3 h-3 w-full" />
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function renderNowPrimary(nowPeriod: HourlyPeriod | null) {
-  if (!nowPeriod) {
-    return <p className="text-sm text-muted-foreground">No current period available.</p>
-  }
-
-  return (
-    <div className="space-y-1">
-      <p className="text-4xl font-semibold tracking-tight sm:text-5xl">
-        {nowPeriod.temperature ?? "--"}
-        {nowPeriod.temperatureUnit ?? ""}
-      </p>
-      <p className="text-sm text-muted-foreground">
-        {nowPeriod.shortForecast ?? "Forecast unavailable"}
-      </p>
-    </div>
-  )
-}
-
-function renderNowSecondary(nowPeriod: HourlyPeriod | null) {
-  if (!nowPeriod) {
-    return <p className="text-sm text-muted-foreground">No weather details available.</p>
-  }
-
-  const windText =
-    nowPeriod.windSpeedMph !== null
-      ? `${nowPeriod.windSpeedMph} mph ${nowPeriod.windDirection ?? ""}`.trim()
-      : "--"
-
-  const precipText =
-    nowPeriod.probabilityOfPrecipitation !== null
-      ? `${nowPeriod.probabilityOfPrecipitation}%`
-      : "--"
-
-  return (
-    <div className="space-y-3 text-sm">
-      <div className="flex items-center justify-between">
-        <span className="text-muted-foreground">Wind</span>
-        <span className="font-medium">{windText}</span>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-muted-foreground">Precip</span>
-        <span className="font-medium">{precipText}</span>
-      </div>
-    </div>
-  )
-}
-
 export function Dashboard({
   currentLocation,
   locationStatus,
@@ -206,18 +107,14 @@ export function Dashboard({
   showLocationControls,
   onToggleLocationControls,
   onFavoriteChange,
-  zipInput,
-  onZipInputChange,
-  onZipSubmit,
-  cityQuery,
-  onCityQueryChange,
-  citySuggestions,
-  isCitySuggestionsLoading,
-  citySuggestionsError,
-  onCitySuggestionSelect,
-  zipMessage,
-  isZipLoading,
-  isZipError,
+  locationQuery,
+  onLocationQueryChange,
+  onLocationSearchSubmit,
+  locationSuggestions,
+  isLocationSuggestionsLoading,
+  locationSuggestionsError,
+  onLocationSuggestionSelect,
+  locationMessage,
   onRefreshForecast,
   canRefreshForecast,
   isRefreshingForecast,
@@ -225,12 +122,8 @@ export function Dashboard({
   isForecastError,
   forecastErrorMessage,
   periods,
-  nowPeriod,
   generatedAt,
   healthMessage,
-  timelineWindowStartIndex,
-  timelineWindowSize,
-  onTimelineWindowChange,
 }: DashboardProps) {
   return (
     <div className="space-y-4">
@@ -286,80 +179,65 @@ export function Dashboard({
               </select>
             </div>
 
-            <form className="space-y-2" onSubmit={onZipSubmit}>
-              <label className="text-sm font-medium" htmlFor="zip-input">
-                ZIP code
+            <form className="space-y-2" onSubmit={onLocationSearchSubmit}>
+              <label className="text-sm font-medium" htmlFor="location-input">
+                City, state, or ZIP (USA only)
               </label>
               <div className="flex gap-2">
                 <input
-                  id="zip-input"
-                  value={zipInput}
+                  id="location-input"
+                  value={locationQuery}
                   onChange={(event) => {
-                    onZipInputChange(event.target.value)
+                    onLocationQueryChange(event.target.value)
                   }}
-                  placeholder="e.g. 80401"
-                  inputMode="numeric"
-                  maxLength={5}
+                  placeholder="e.g. 80401 or Golden, CO"
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                 />
-                <Button disabled={isZipLoading} type="submit">
-                  {isZipLoading ? "Looking..." : "Use ZIP"}
+                <Button disabled={isLocationSuggestionsLoading} type="submit">
+                  {isLocationSuggestionsLoading ? "Searching..." : "Use"}
                 </Button>
               </div>
               <p
                 className={
-                  isZipError ? "text-xs text-red-600" : "text-xs text-muted-foreground"
+                  locationSuggestionsError
+                    ? "text-xs text-red-600"
+                    : "text-xs text-muted-foreground"
                 }
               >
-                {zipMessage}
+                {locationSuggestionsError || locationMessage}
               </p>
-            </form>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="city-input">
-                City, state (USA only)
-              </label>
-              <input
-                id="city-input"
-                value={cityQuery}
-                onChange={(event) => {
-                  onCityQueryChange(event.target.value)
-                }}
-                placeholder="Start typing a city..."
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-              />
-              {isCitySuggestionsLoading ? (
-                <p className="text-xs text-muted-foreground">Searching cities...</p>
-              ) : null}
-              {citySuggestionsError ? (
-                <p className="text-xs text-red-600">{citySuggestionsError}</p>
-              ) : null}
-              {cityQuery.trim().length >= 2 && citySuggestions.length > 0 ? (
+              {locationQuery.trim().length >= 2 && locationSuggestions.length > 0 ? (
                 <div className="max-h-40 overflow-y-auto rounded-md border">
-                  {citySuggestions.map((suggestion) => (
+                  {locationSuggestions.map((suggestion) => (
                     <button
-                      key={`${suggestion.city}-${suggestion.state}`}
+                      key={`${suggestion.kind}-${suggestion.city}-${suggestion.state}-${suggestion.zip ?? "none"}`}
                       type="button"
                       className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent"
                       onClick={() => {
-                        onCitySuggestionSelect(suggestion)
+                        onLocationSuggestionSelect(suggestion)
                       }}
                     >
-                      <span>{suggestion.label}</span>
-                      <span className="text-xs text-muted-foreground">Use</span>
+                      <span className="truncate">{suggestion.label}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {suggestion.zip
+                          ? `ZIP ${suggestion.zip}`
+                          : suggestion.kind === "zip"
+                            ? "ZIP"
+                            : "City/State"}
+                      </span>
                     </button>
                   ))}
                 </div>
               ) : null}
-              {cityQuery.trim().length >= 2 &&
-              !isCitySuggestionsLoading &&
-              !citySuggestionsError &&
-              citySuggestions.length === 0 ? (
+              {locationQuery.trim().length >= 2 &&
+              !isLocationSuggestionsLoading &&
+              !locationSuggestionsError &&
+              locationSuggestions.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  No city matches found.
+                  No location matches found.
                 </p>
               ) : null}
-            </div>
+            </form>
 
             {currentLocation ? (
               <p className="text-xs text-muted-foreground">
@@ -378,35 +256,10 @@ export function Dashboard({
         />
       ) : null}
 
-      <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          Now
-        </h2>
-        {isForecastLoading ? (
-          <NowCardsSkeleton />
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Card className="min-h-[170px]">
-              <CardHeader>
-                <CardTitle className="text-base">Current Temperature</CardTitle>
-              </CardHeader>
-              <CardContent>{renderNowPrimary(nowPeriod)}</CardContent>
-            </Card>
-
-            <Card className="min-h-[170px]">
-              <CardHeader>
-                <CardTitle className="text-base">Conditions</CardTitle>
-              </CardHeader>
-              <CardContent>{renderNowSecondary(nowPeriod)}</CardContent>
-            </Card>
-          </div>
-        )}
-      </section>
-
       <Card className="min-h-[220px]">
         <CardHeader>
           <CardTitle>Graph</CardTitle>
-          <CardDescription>48-hour chart view synchronized with timeline.</CardDescription>
+          <CardDescription>48-hour chart view.</CardDescription>
         </CardHeader>
         <CardContent>
           {isForecastLoading ? (
@@ -418,37 +271,7 @@ export function Dashboard({
               onRetry={onRefreshForecast}
             />
           ) : (
-            <HourlyGraphPanel
-              periods={periods}
-              windowStartIndex={timelineWindowStartIndex}
-              windowSize={timelineWindowSize}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="min-h-[220px]">
-        <CardHeader>
-          <CardTitle>Timeline</CardTitle>
-          <CardDescription>
-            Swipe horizontally or jump forward in 24/48 hour increments.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isForecastLoading ? (
-            <TimelineRowsSkeleton />
-          ) : isForecastError ? (
-            <ForecastErrorState
-              message={forecastErrorMessage}
-              isRetrying={isRefreshingForecast}
-              onRetry={onRefreshForecast}
-            />
-          ) : (
-            <HourlyTimeline
-              periods={periods}
-              windowSize={48}
-              onWindowChange={onTimelineWindowChange}
-            />
+            <HourlyGraphPanel periods={periods} />
           )}
         </CardContent>
       </Card>

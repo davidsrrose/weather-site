@@ -11,6 +11,7 @@ export type CitySuggestion = {
   label: string
   city: string
   state: string
+  zip?: string | null
   lat: number
   lon: number
 }
@@ -18,6 +19,17 @@ export type CitySuggestion = {
 export type CitySuggestionsResponse = {
   query: string
   suggestions: CitySuggestion[]
+}
+
+export type LocationSuggestion = {
+  kind: "city" | "zip"
+  label: string
+  city: string
+  state: string
+  zip?: string
+  lat: number
+  lon: number
+  source?: "cache" | "upstream"
 }
 
 export type HourlyPeriod = {
@@ -28,6 +40,7 @@ export type HourlyPeriod = {
   windSpeedMph: number | null
   windDirection: string | null
   probabilityOfPrecipitation: number | null
+  skyCover: number | null
   relativeHumidity: number | null
   icon: string | null
 }

@@ -87,6 +87,7 @@ def normalize_hourly_period(period: dict[str, Any]) -> dict[str, Any]:
         "probabilityOfPrecipitation": _extract_measurement_value(
             period.get("probabilityOfPrecipitation")
         ),
+        "skyCover": _extract_measurement_value(period.get("skyCover")),
         "relativeHumidity": _extract_measurement_value(period.get("relativeHumidity")),
         "icon": period.get("icon"),
     }

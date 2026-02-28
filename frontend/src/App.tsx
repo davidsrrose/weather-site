@@ -1,13 +1,13 @@
-import { useState, type FormEvent } from "react"
-import { useCitySuggestions, useGeocodeZip, useHourlyForecast } from "@/api/hooks"
+import { type FormEvent } from "react"
+import { useHourlyForecast, useLocationSuggestions } from "@/api/hooks"
 import { AppShell } from "@/components/AppShell"
 import { Dashboard } from "@/components/Dashboard"
-import type { TimelineWindow } from "@/components/HourlyTimeline"
 import { useHealthCheck } from "@/hooks/useHealthCheck"
 import { useLocationState } from "@/hooks/useLocationState"
 import { useThemePreference } from "@/hooks/useThemePreference"
 
 const ZIP_REGEX = /^\d{5}$/
+const ZIP_PARTIAL_REGEX = /^\d{1,4}$/
 
 function App() {
   const { isDarkMode, toggleThemeMode } = useThemePreference()
@@ -18,51 +18,52 @@ function App() {
     locationStatus,
     showLocationControls,
     setShowLocationControls,
-    zipInput,
-    setZipInput,
-    zipMessage,
-    setZipMessage,
-    cityQuery,
-    setCityQuery,
+    locationQuery,
+    setLocationQuery,
+    locationMessage,
+    setLocationMessage,
     selectFavorite,
-    applyZipResult,
-    applyCitySuggestion,
+    applySearchSuggestion,
   } = useLocationState()
-  const [timelineWindow, setTimelineWindow] = useState<TimelineWindow | null>(null)
-
-  const geocodeZip = useGeocodeZip()
-  const citySuggestionsQuery = useCitySuggestions(cityQuery, 8)
+  const locationSuggestionsQuery = useLocationSuggestions(locationQuery, 8)
   const hourlyForecast = useHourlyForecast(currentLocation?.lat, currentLocation?.lon)
 
-  const handleZipSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleLocationSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const zip = zipInput.trim()
+    const query = locationQuery.trim()
 
-    if (!ZIP_REGEX.test(zip)) {
-      setZipMessage("ZIP must be exactly 5 digits.")
+    if (query.length < 2) {
+      setLocationMessage("Type at least 2 characters or a 5-digit ZIP.")
       return
     }
 
-    setZipMessage(`Looking up ZIP ${zip}...`)
-
-    try {
-      const data = await geocodeZip.mutateAsync(zip)
-      applyZipResult(data)
-    } catch (error) {
-      setZipMessage(
-        `ZIP lookup failed: ${error instanceof Error ? error.message : "unknown error"}`
-      )
+    if (ZIP_PARTIAL_REGEX.test(query)) {
+      setLocationMessage("Enter all 5 digits for ZIP search.")
+      return
     }
+
+    if (locationSuggestionsQuery.isFetching) {
+      setLocationMessage("Searching locations...")
+      return
+    }
+
+    const suggestions = locationSuggestionsQuery.data ?? []
+    if (suggestions.length === 0) {
+      if (ZIP_REGEX.test(query)) {
+        setLocationMessage("No ZIP match found. Check the ZIP and try again.")
+        return
+      }
+      setLocationMessage("No location matches found. Try city, state or ZIP.")
+      return
+    }
+
+    applySearchSuggestion(suggestions[0])
   }
 
-  const nowPeriod = hourlyForecast.data?.periods?.[0] ?? null
   const forecastPeriods = hourlyForecast.data?.periods ?? []
   const isForecastLoading = hourlyForecast.isLoading && !hourlyForecast.data
   const isRefreshingForecast = hourlyForecast.isFetching && !isForecastLoading
   const forecastErrorMessage = hourlyForecast.error?.message ?? "Unable to load forecast."
-  const timelineWindowStartIndex = timelineWindow?.windowStartIndex ?? 0
-  const timelineWindowSize = timelineWindow?.windowSize ?? 48
-
   return (
     <AppShell
       title="Weather Site"
@@ -79,18 +80,14 @@ function App() {
           setShowLocationControls((prev) => !prev)
         }}
         onFavoriteChange={selectFavorite}
-        zipInput={zipInput}
-        onZipInputChange={setZipInput}
-        onZipSubmit={handleZipSubmit}
-        cityQuery={cityQuery}
-        onCityQueryChange={setCityQuery}
-        citySuggestions={citySuggestionsQuery.data?.suggestions ?? []}
-        isCitySuggestionsLoading={citySuggestionsQuery.isFetching}
-        citySuggestionsError={citySuggestionsQuery.error?.message ?? ""}
-        onCitySuggestionSelect={applyCitySuggestion}
-        zipMessage={zipMessage}
-        isZipLoading={geocodeZip.isPending}
-        isZipError={geocodeZip.isError}
+        locationQuery={locationQuery}
+        onLocationQueryChange={setLocationQuery}
+        onLocationSearchSubmit={handleLocationSearchSubmit}
+        locationSuggestions={locationSuggestionsQuery.data ?? []}
+        isLocationSuggestionsLoading={locationSuggestionsQuery.isFetching}
+        locationSuggestionsError={locationSuggestionsQuery.error?.message ?? ""}
+        onLocationSuggestionSelect={applySearchSuggestion}
+        locationMessage={locationMessage}
         onRefreshForecast={() => {
           void hourlyForecast.refetch()
         }}
@@ -100,7 +97,6 @@ function App() {
         isForecastError={hourlyForecast.isError}
         forecastErrorMessage={forecastErrorMessage}
         periods={forecastPeriods}
-        nowPeriod={nowPeriod}
         generatedAt={hourlyForecast.data?.generated_at ?? null}
         healthMessage={
           healthState === "ok"
@@ -109,9 +105,6 @@ function App() {
               ? "Checking API health..."
               : healthMessage
         }
-        timelineWindowStartIndex={timelineWindowStartIndex}
-        timelineWindowSize={timelineWindowSize}
-        onTimelineWindowChange={setTimelineWindow}
       />
     </AppShell>
   )
