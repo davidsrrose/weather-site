@@ -1,17 +1,11 @@
-import type { FormEvent } from "react"
-import { RotateCcw } from "lucide-react"
+import type { FormEvent } from 'react'
+import { RotateCcw } from 'lucide-react'
 
-import type { HourlyPeriod, LocationSuggestion } from "@/api/types"
-import { HourlyGraphPanel } from "@/components/HourlyGraphPanel"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import type { HourlyPeriod, LocationSuggestion } from '@/api/types'
+import { HourlyGraphPanel } from '@/components/HourlyGraphPanel'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type DashboardLocation = {
   label: string
@@ -55,11 +49,7 @@ function formatCoords(lat: number, lon: number): string {
   return `${lat.toFixed(4)}, ${lon.toFixed(4)}`
 }
 
-function ForecastErrorState({
-  message,
-  isRetrying,
-  onRetry,
-}: ForecastErrorStateProps) {
+function ForecastErrorState({ message, isRetrying, onRetry }: ForecastErrorStateProps) {
   return (
     <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
       <p className="text-sm font-medium text-destructive">
@@ -75,7 +65,7 @@ function ForecastErrorState({
         disabled={isRetrying}
       >
         <RotateCcw className="h-3.5 w-3.5" />
-        {isRetrying ? "Retrying..." : "Retry"}
+        {isRetrying ? 'Retrying...' : 'Retry'}
       </Button>
     </div>
   )
@@ -89,11 +79,7 @@ function GraphPanelSkeleton() {
       <Skeleton className="h-10 w-full" />
       <div className="grid h-52 grid-cols-12 items-end gap-2">
         {barHeights.map((height, index) => (
-          <Skeleton
-            key={index}
-            className="w-full"
-            style={{ height }}
-          />
+          <Skeleton key={index} className="w-full" style={{ height }} />
         ))}
       </div>
     </div>
@@ -136,7 +122,7 @@ export function Dashboard({
             onClick={onToggleLocationControls}
           >
             <span className="truncate">
-              {currentLocation ? currentLocation.label : "Select location"}
+              {currentLocation ? currentLocation.label : 'Select location'}
             </span>
           </Button>
           <Button
@@ -144,7 +130,7 @@ export function Dashboard({
             onClick={onRefreshForecast}
             disabled={!canRefreshForecast || isRefreshingForecast}
           >
-            {isRefreshingForecast ? "Refreshing..." : "Refresh"}
+            {isRefreshingForecast ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
       </div>
@@ -194,14 +180,14 @@ export function Dashboard({
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                 />
                 <Button disabled={isLocationSuggestionsLoading} type="submit">
-                  {isLocationSuggestionsLoading ? "Searching..." : "Use"}
+                  {isLocationSuggestionsLoading ? 'Searching...' : 'Use'}
                 </Button>
               </div>
               <p
                 className={
                   locationSuggestionsError
-                    ? "text-xs text-red-600"
-                    : "text-xs text-muted-foreground"
+                    ? 'text-xs text-red-600'
+                    : 'text-xs text-muted-foreground'
                 }
               >
                 {locationSuggestionsError || locationMessage}
@@ -210,7 +196,7 @@ export function Dashboard({
                 <div className="max-h-40 overflow-y-auto rounded-md border">
                   {locationSuggestions.map((suggestion) => (
                     <button
-                      key={`${suggestion.kind}-${suggestion.city}-${suggestion.state}-${suggestion.zip ?? "none"}`}
+                      key={`${suggestion.kind}-${suggestion.city}-${suggestion.state}-${suggestion.zip ?? 'none'}`}
                       type="button"
                       className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent"
                       onClick={() => {
@@ -221,9 +207,9 @@ export function Dashboard({
                       <span className="text-xs text-muted-foreground">
                         {suggestion.zip
                           ? `ZIP ${suggestion.zip}`
-                          : suggestion.kind === "zip"
-                            ? "ZIP"
-                            : "City/State"}
+                          : suggestion.kind === 'zip'
+                            ? 'ZIP'
+                            : 'City/State'}
                       </span>
                     </button>
                   ))}
@@ -233,9 +219,7 @@ export function Dashboard({
               !isLocationSuggestionsLoading &&
               !locationSuggestionsError &&
               locationSuggestions.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  No location matches found.
-                </p>
+                <p className="text-xs text-muted-foreground">No location matches found.</p>
               ) : null}
             </form>
 

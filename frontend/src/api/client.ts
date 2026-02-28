@@ -3,30 +3,30 @@ export class ApiError extends Error {
 
   constructor(message: string, status: number) {
     super(message)
-    this.name = "ApiError"
+    this.name = 'ApiError'
     this.status = status
   }
 }
 
 function normalizeErrorMessage(payload: unknown, fallback: string): string {
-  if (!payload || typeof payload !== "object") {
+  if (!payload || typeof payload !== 'object') {
     return fallback
   }
 
   const detail = (payload as { detail?: unknown }).detail
-  if (typeof detail === "string") {
+  if (typeof detail === 'string') {
     return detail
   }
 
-  if (detail && typeof detail === "object") {
+  if (detail && typeof detail === 'object') {
     const detailMessage = (detail as { message?: unknown }).message
-    if (typeof detailMessage === "string") {
+    if (typeof detailMessage === 'string') {
       return detailMessage
     }
   }
 
   const message = (payload as { message?: unknown }).message
-  if (typeof message === "string") {
+  if (typeof message === 'string') {
     return message
   }
 
@@ -49,10 +49,7 @@ function buildFallbackMessage(url: string, response: Response): string {
   return `Request to ${endpoint} failed with HTTP ${response.status}`
 }
 
-export async function fetchJson<T>(
-  url: string,
-  options?: RequestInit
-): Promise<T> {
+export async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, options)
 
   let payload: unknown = null

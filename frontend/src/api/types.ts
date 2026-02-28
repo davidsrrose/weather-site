@@ -4,7 +4,7 @@ export type GeocodeResponse = {
   lon: number
   city: string
   state: string
-  source: "cache" | "upstream"
+  source: 'cache' | 'upstream'
 }
 
 export type CitySuggestion = {
@@ -22,14 +22,14 @@ export type CitySuggestionsResponse = {
 }
 
 export type LocationSuggestion = {
-  kind: "city" | "zip"
+  kind: 'city' | 'zip'
   label: string
   city: string
   state: string
   zip?: string
   lat: number
   lon: number
-  source?: "cache" | "upstream"
+  source?: 'cache' | 'upstream'
 }
 
 export type HourlyPeriod = {

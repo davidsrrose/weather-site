@@ -1,7 +1,7 @@
-import type { ReactNode } from "react"
-import { Moon, Sun } from "lucide-react"
+import type { ReactNode } from 'react'
+import { Moon, Sun } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button'
 
 type AppShellProps = {
   title: string
@@ -28,7 +28,7 @@ export function AppShell({
             size="icon"
             className="shrink-0"
             onClick={onToggleDarkMode}
-            aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {isDarkMode ? <Sun /> : <Moon />}
           </Button>

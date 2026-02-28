@@ -1,10 +1,10 @@
-import { type FormEvent } from "react"
-import { useHourlyForecast, useLocationSuggestions } from "@/api/hooks"
-import { AppShell } from "@/components/AppShell"
-import { Dashboard } from "@/components/Dashboard"
-import { useHealthCheck } from "@/hooks/useHealthCheck"
-import { useLocationState } from "@/hooks/useLocationState"
-import { useThemePreference } from "@/hooks/useThemePreference"
+import { type FormEvent } from 'react'
+import { useHourlyForecast, useLocationSuggestions } from '@/api/hooks'
+import { AppShell } from '@/components/AppShell'
+import { Dashboard } from '@/components/Dashboard'
+import { useHealthCheck } from '@/hooks/useHealthCheck'
+import { useLocationState } from '@/hooks/useLocationState'
+import { useThemePreference } from '@/hooks/useThemePreference'
 
 const ZIP_REGEX = /^\d{5}$/
 const ZIP_PARTIAL_REGEX = /^\d{1,4}$/
@@ -33,27 +33,27 @@ function App() {
     const query = locationQuery.trim()
 
     if (query.length < 2) {
-      setLocationMessage("Type at least 2 characters or a 5-digit ZIP.")
+      setLocationMessage('Type at least 2 characters or a 5-digit ZIP.')
       return
     }
 
     if (ZIP_PARTIAL_REGEX.test(query)) {
-      setLocationMessage("Enter all 5 digits for ZIP search.")
+      setLocationMessage('Enter all 5 digits for ZIP search.')
       return
     }
 
     if (locationSuggestionsQuery.isFetching) {
-      setLocationMessage("Searching locations...")
+      setLocationMessage('Searching locations...')
       return
     }
 
     const suggestions = locationSuggestionsQuery.data ?? []
     if (suggestions.length === 0) {
       if (ZIP_REGEX.test(query)) {
-        setLocationMessage("No ZIP match found. Check the ZIP and try again.")
+        setLocationMessage('No ZIP match found. Check the ZIP and try again.')
         return
       }
-      setLocationMessage("No location matches found. Try city, state or ZIP.")
+      setLocationMessage('No location matches found. Try city, state or ZIP.')
       return
     }
 
@@ -63,7 +63,7 @@ function App() {
   const forecastPeriods = hourlyForecast.data?.periods ?? []
   const isForecastLoading = hourlyForecast.isLoading && !hourlyForecast.data
   const isRefreshingForecast = hourlyForecast.isFetching && !isForecastLoading
-  const forecastErrorMessage = hourlyForecast.error?.message ?? "Unable to load forecast."
+  const forecastErrorMessage = hourlyForecast.error?.message ?? 'Unable to load forecast.'
   return (
     <AppShell
       title="Weather Site"
@@ -85,7 +85,7 @@ function App() {
         onLocationSearchSubmit={handleLocationSearchSubmit}
         locationSuggestions={locationSuggestionsQuery.data ?? []}
         isLocationSuggestionsLoading={locationSuggestionsQuery.isFetching}
-        locationSuggestionsError={locationSuggestionsQuery.error?.message ?? ""}
+        locationSuggestionsError={locationSuggestionsQuery.error?.message ?? ''}
         onLocationSuggestionSelect={applySearchSuggestion}
         locationMessage={locationMessage}
         onRefreshForecast={() => {
@@ -99,10 +99,10 @@ function App() {
         periods={forecastPeriods}
         generatedAt={hourlyForecast.data?.generated_at ?? null}
         healthMessage={
-          healthState === "ok"
+          healthState === 'ok'
             ? healthMessage
-            : healthState === "loading"
-              ? "Checking API health..."
+            : healthState === 'loading'
+              ? 'Checking API health...'
               : healthMessage
         }
       />

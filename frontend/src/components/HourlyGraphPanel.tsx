@@ -1,10 +1,4 @@
-import {
-  type PointerEvent as ReactPointerEvent,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -15,9 +9,9 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts"
+} from 'recharts'
 
-import type { HourlyPeriod } from "@/api/types"
+import type { HourlyPeriod } from '@/api/types'
 import {
   type ForecastDayPhase,
   formatForecastDayMarkerLabel,
@@ -25,10 +19,10 @@ import {
   formatForecastRangeLabel,
   inferForecastDayPhase,
   isForecastMidnight,
-} from "@/lib/forecastTime"
-import { cn } from "@/lib/utils"
+} from '@/lib/forecastTime'
+import { cn } from '@/lib/utils'
 
-type MetricKey = "temp" | "precip" | "wind" | "humidity"
+type MetricKey = 'temp' | 'precip' | 'wind' | 'humidity'
 
 type HourlyGraphPanelProps = {
   periods: HourlyPeriod[]
@@ -43,60 +37,60 @@ type MetricConfig = {
 
 const METRIC_CONFIG: Record<MetricKey, MetricConfig> = {
   temp: {
-    label: "Temp",
-    color: "hsl(0 84% 58%)",
-    unitSuffix: "°",
+    label: 'Temp',
+    color: 'hsl(0 84% 58%)',
+    unitSuffix: '°',
     selector: (period) => period.temperature,
   },
   precip: {
-    label: "Precip",
-    color: "hsl(var(--chart-2, 199 89% 48%))",
-    unitSuffix: "%",
+    label: 'Precip',
+    color: 'hsl(var(--chart-2, 199 89% 48%))',
+    unitSuffix: '%',
     selector: (period) => period.probabilityOfPrecipitation,
   },
   wind: {
-    label: "Wind",
-    color: "hsl(var(--chart-3, 173 58% 39%))",
-    unitSuffix: " mph",
+    label: 'Wind',
+    color: 'hsl(var(--chart-3, 173 58% 39%))',
+    unitSuffix: ' mph',
     selector: (period) => period.windSpeedMph,
   },
   humidity: {
-    label: "Humidity",
-    color: "hsl(var(--chart-4, 43 96% 56%))",
-    unitSuffix: "%",
+    label: 'Humidity',
+    color: 'hsl(var(--chart-4, 43 96% 56%))',
+    unitSuffix: '%',
     selector: (period) => period.relativeHumidity,
   },
 }
 
-const METRIC_ORDER: MetricKey[] = ["temp", "precip", "wind", "humidity"]
+const METRIC_ORDER: MetricKey[] = ['temp', 'precip', 'wind', 'humidity']
 
 const TEMP_SERIES = {
   temperature: {
-    label: "Temp (°F)",
-    color: "hsl(0 84% 58%)",
+    label: 'Temp (°F)',
+    color: 'hsl(0 84% 58%)',
   },
   windChill: {
-    label: "Wind Chill (°F)",
-    color: "hsl(221 83% 57%)",
+    label: 'Wind Chill (°F)',
+    color: 'hsl(221 83% 57%)',
   },
   dewPoint: {
-    label: "Dew Point (°F)",
-    color: "hsl(142 72% 42%)",
+    label: 'Dew Point (°F)',
+    color: 'hsl(142 72% 42%)',
   },
 } as const
 
 const PRECIP_SERIES = {
   precipPotential: {
-    label: "Precip. Potential (%)",
-    color: "hsl(221 83% 57%)",
+    label: 'Precip. Potential (%)',
+    color: 'hsl(221 83% 57%)',
   },
   skyCover: {
-    label: "Sky Cover (%)",
-    color: "hsl(142 72% 42%)",
+    label: 'Sky Cover (%)',
+    color: 'hsl(142 72% 42%)',
   },
   relativeHumidity: {
-    label: "Relative Humidity (%)",
-    color: "hsl(289 70% 52%)",
+    label: 'Relative Humidity (%)',
+    color: 'hsl(289 70% 52%)',
   },
 } as const
 
@@ -149,7 +143,7 @@ type ChartPeriod = {
 const X_AXIS_LABEL_INTERVAL_HOURS = 3
 const WINDOW_SIZE_HOURS = 48
 const STICKY_HEADER_CLASS =
-  "sticky left-0 inline-block bg-background/95 pr-2 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+  'sticky left-0 inline-block bg-background/95 pr-2 backdrop-blur supports-[backdrop-filter]:bg-background/80'
 
 type ActiveDotRendererProps = {
   cx?: number
@@ -160,13 +154,13 @@ type ActiveDotRendererProps = {
 function createActiveDotLabelRenderer(
   color: string,
   formatValue: (value: number) => string,
-  offsetY: number = 0
+  offsetY: number = 0,
 ) {
   return function renderActiveDotLabel(props: ActiveDotRendererProps) {
     if (
-      typeof props.cx !== "number" ||
-      typeof props.cy !== "number" ||
-      typeof props.value !== "number"
+      typeof props.cx !== 'number' ||
+      typeof props.cy !== 'number' ||
+      typeof props.value !== 'number'
     ) {
       return null
     }
@@ -215,16 +209,12 @@ function formatMph(value: number): string {
 
 function formatXAxisTick(startTime: string, index: number): string {
   if (index % X_AXIS_LABEL_INTERVAL_HOURS !== 0) {
-    return ""
+    return ''
   }
   return formatForecastHourLabel(startTime)
 }
 
-function clampWindowStart(
-  nextStart: number,
-  periodCount: number,
-  windowSize: number
-): number {
+function clampWindowStart(nextStart: number, periodCount: number, windowSize: number): number {
   const maxStart = Math.max(0, periodCount - windowSize)
   return Math.min(Math.max(nextStart, 0), maxStart)
 }
@@ -257,12 +247,12 @@ function findCurrentHourIndex(periods: HourlyPeriod[]): number {
 function toNumericValues(points: MetricChartPoint[]): number[] {
   return points
     .map((point) => point.value)
-    .filter((value): value is number => typeof value === "number")
+    .filter((value): value is number => typeof value === 'number')
 }
 
 function toMetricChartPoints(
   chartPeriods: ChartPeriod[],
-  selector: (period: HourlyPeriod) => number | null
+  selector: (period: HourlyPeriod) => number | null,
 ): MetricChartPoint[] {
   return chartPeriods.map((chartPeriod) => ({
     startTime: chartPeriod.startTime,
@@ -271,15 +261,12 @@ function toMetricChartPoints(
   }))
 }
 
-function toFahrenheit(
-  temperature: number | null,
-  temperatureUnit: string | null
-): number | null {
+function toFahrenheit(temperature: number | null, temperatureUnit: string | null): number | null {
   if (temperature === null) {
     return null
   }
 
-  if (temperatureUnit === "C") {
+  if (temperatureUnit === 'C') {
     return (temperature * 9) / 5 + 32
   }
 
@@ -288,7 +275,7 @@ function toFahrenheit(
 
 function computeWindChillF(
   temperatureF: number | null,
-  windSpeedMph: number | null
+  windSpeedMph: number | null,
 ): number | null {
   if (temperatureF === null || windSpeedMph === null) {
     return null
@@ -300,17 +287,14 @@ function computeWindChillF(
 
   const windFactor = windSpeedMph ** 0.16
   const windChill =
-    35.74 +
-    0.6215 * temperatureF -
-    35.75 * windFactor +
-    0.4275 * temperatureF * windFactor
+    35.74 + 0.6215 * temperatureF - 35.75 * windFactor + 0.4275 * temperatureF * windFactor
 
   return Math.round(windChill)
 }
 
 function computeDewPointF(
   temperatureF: number | null,
-  relativeHumidity: number | null
+  relativeHumidity: number | null,
 ): number | null {
   if (temperatureF === null || relativeHumidity === null) {
     return null
@@ -323,8 +307,7 @@ function computeDewPointF(
   const temperatureC = ((temperatureF - 32) * 5) / 9
   const a = 17.625
   const b = 243.04
-  const gamma =
-    Math.log(relativeHumidity / 100) + (a * temperatureC) / (b + temperatureC)
+  const gamma = Math.log(relativeHumidity / 100) + (a * temperatureC) / (b + temperatureC)
   const dewPointC = (b * gamma) / (a - gamma)
   const dewPointF = (dewPointC * 9) / 5 + 32
 
@@ -332,11 +315,11 @@ function computeDewPointF(
 }
 
 function resolveYAxisDomain(metric: MetricKey, values: number[]): [number, number] {
-  if (metric === "precip") {
+  if (metric === 'precip') {
     return [0, 100]
   }
 
-  if (metric === "temp") {
+  if (metric === 'temp') {
     if (values.length === 0) {
       return [0, 10]
     }
@@ -345,7 +328,7 @@ function resolveYAxisDomain(metric: MetricKey, values: number[]): [number, numbe
     return [Math.floor(minValue - 5), Math.ceil(maxValue + 10)]
   }
 
-  if (metric === "humidity") {
+  if (metric === 'humidity') {
     return [0, 100]
   }
 
@@ -359,7 +342,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
   const [isDragging, setIsDragging] = useState(false)
 
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const lastLoadedKeyRef = useRef("")
+  const lastLoadedKeyRef = useRef('')
   const dragPointerIdRef = useRef<number | null>(null)
   const dragStartXRef = useRef(0)
   const dragStartScrollLeftRef = useRef(0)
@@ -389,7 +372,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
   const visibleStartIndex = clampWindowStart(
     Math.floor(scrollLeft / hourPixelWidth),
     periods.length,
-    WINDOW_SIZE_HOURS
+    WINDOW_SIZE_HOURS,
   )
   const visibleEndIndex = Math.min(visibleStartIndex + WINDOW_SIZE_HOURS, periods.length)
 
@@ -406,11 +389,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
     lastLoadedKeyRef.current = dataKey
 
     const currentHourIndex = findCurrentHourIndex(periods)
-    const initialStart = clampWindowStart(
-      currentHourIndex,
-      periods.length,
-      WINDOW_SIZE_HOURS
-    )
+    const initialStart = clampWindowStart(currentHourIndex, periods.length, WINDOW_SIZE_HOURS)
     const nextScrollLeft = initialStart * hourPixelWidth
     container.scrollLeft = nextScrollLeft
     setScrollLeft(nextScrollLeft)
@@ -425,7 +404,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
   }
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.pointerType !== "mouse" || event.button !== 0) {
+    if (event.pointerType !== 'mouse' || event.button !== 0) {
       return
     }
 
@@ -486,10 +465,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
     return chartPeriods.map((chartPeriod) => {
       const temperature =
         chartPeriod.temperatureF !== null ? Math.round(chartPeriod.temperatureF) : null
-      const windChill = computeWindChillF(
-        chartPeriod.temperatureF,
-        chartPeriod.period.windSpeedMph
-      )
+      const windChill = computeWindChillF(chartPeriod.temperatureF, chartPeriod.period.windSpeedMph)
       return {
         startTime: chartPeriod.startTime,
         temperature,
@@ -498,10 +474,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
           temperature !== null && windChill !== null && windChill !== temperature
             ? windChill
             : null,
-        dewPoint: computeDewPointF(
-          chartPeriod.temperatureF,
-          chartPeriod.period.relativeHumidity
-        ),
+        dewPoint: computeDewPointF(chartPeriod.temperatureF, chartPeriod.period.relativeHumidity),
         dayPhase: chartPeriod.dayPhase,
       }
     })
@@ -520,7 +493,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
   }, [chartPeriods])
 
   const pointsByMetric = useMemo<
-    Record<Exclude<MetricKey, "temp" | "precip">, MetricChartPoint[]>
+    Record<Exclude<MetricKey, 'temp' | 'precip'>, MetricChartPoint[]>
   >(() => {
     return {
       wind: toMetricChartPoints(chartPeriods, METRIC_CONFIG.wind.selector),
@@ -534,7 +507,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
         startTime: chartPeriod.startTime,
         dayPhase: chartPeriod.dayPhase,
       })),
-    [chartPeriods]
+    [chartPeriods],
   )
 
   const dayMarkers = useMemo<DayMarker[]>(() => {
@@ -577,32 +550,32 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
       segmentStart = index
     }
 
-    return bands.filter((band) => band.phase !== "unknown")
+    return bands.filter((band) => band.phase !== 'unknown')
   }, [basePoints])
 
   const hasTempValues = tempChartData.some(
     (point) =>
-      typeof point.temperature === "number" ||
-      typeof point.windChill === "number" ||
-      typeof point.dewPoint === "number"
+      typeof point.temperature === 'number' ||
+      typeof point.windChill === 'number' ||
+      typeof point.dewPoint === 'number',
   )
   const hasAnyValues =
     hasTempValues ||
     precipChartData.some(
       (point) =>
-        typeof point.precipPotential === "number" ||
-        typeof point.skyCover === "number" ||
-        typeof point.relativeHumidity === "number"
+        typeof point.precipPotential === 'number' ||
+        typeof point.skyCover === 'number' ||
+        typeof point.relativeHumidity === 'number',
     ) ||
-    pointsByMetric.wind.some((point) => typeof point.value === "number") ||
-    pointsByMetric.humidity.some((point) => typeof point.value === "number")
+    pointsByMetric.wind.some((point) => typeof point.value === 'number') ||
+    pointsByMetric.humidity.some((point) => typeof point.value === 'number')
 
   const visibleRangeLabel = useMemo(() => {
     const start = periods[visibleStartIndex]?.startTime
     const endIndex = Math.max(visibleStartIndex, visibleEndIndex - 1)
     const end = periods[endIndex]?.startTime
     if (!start || !end) {
-      return "--"
+      return '--'
     }
     return formatForecastRangeLabel(start, end)
   }, [periods, visibleStartIndex, visibleEndIndex])
@@ -617,10 +590,10 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
       <div
         ref={containerRef}
         className={cn(
-          "overflow-x-auto pb-1",
-          isDragging ? "cursor-grabbing select-none" : "cursor-grab"
+          'overflow-x-auto pb-1',
+          isDragging ? 'cursor-grabbing select-none' : 'cursor-grab',
         )}
-        style={{ WebkitOverflowScrolling: "touch" }}
+        style={{ WebkitOverflowScrolling: 'touch' }}
         onScroll={handleScroll}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -631,32 +604,28 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
           {METRIC_ORDER.map((metric, metricIndex) => {
             const metricConfig = METRIC_CONFIG[metric]
             const showWindChillSeries =
-              metric === "temp" &&
+              metric === 'temp' &&
               tempChartData
                 .slice(visibleStartIndex, visibleEndIndex)
-                .some((point) => typeof point.windChillDisplay === "number")
+                .some((point) => typeof point.windChillDisplay === 'number')
             const chartData =
-              metric === "temp"
+              metric === 'temp'
                 ? tempChartData
-                : metric === "precip"
+                : metric === 'precip'
                   ? precipChartData
                   : pointsByMetric[metric]
             const yAxisDomain =
-              metric === "temp"
+              metric === 'temp'
                 ? resolveYAxisDomain(
-                    "temp",
+                    'temp',
                     tempChartData
                       .slice(visibleStartIndex, visibleEndIndex)
-                      .flatMap((point) => [
-                        point.temperature,
-                        point.windChill,
-                        point.dewPoint,
-                      ])
-                      .filter((value): value is number => typeof value === "number")
+                      .flatMap((point) => [point.temperature, point.windChill, point.dewPoint])
+                      .filter((value): value is number => typeof value === 'number'),
                   )
-                : metric === "precip"
+                : metric === 'precip'
                   ? resolveYAxisDomain(
-                      "precip",
+                      'precip',
                       precipChartData
                         .slice(visibleStartIndex, visibleEndIndex)
                         .flatMap((point) => [
@@ -664,19 +633,21 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                           point.skyCover,
                           point.relativeHumidity,
                         ])
-                        .filter((value): value is number => typeof value === "number")
+                        .filter((value): value is number => typeof value === 'number'),
                     )
-                : resolveYAxisDomain(
-                    metric,
-                    toNumericValues(
-                      pointsByMetric[metric].slice(visibleStartIndex, visibleEndIndex)
+                  : resolveYAxisDomain(
+                      metric,
+                      toNumericValues(
+                        pointsByMetric[metric].slice(visibleStartIndex, visibleEndIndex),
+                      ),
                     )
-                  )
             return (
               <div key={metric} className="rounded-md border">
                 <div className="border-b px-3 py-1.5 text-xs font-semibold text-muted-foreground">
-                  {metric === "temp" ? (
-                    <div className={`${STICKY_HEADER_CLASS} inline-flex flex-wrap items-center gap-x-3 gap-y-1`}>
+                  {metric === 'temp' ? (
+                    <div
+                      className={`${STICKY_HEADER_CLASS} inline-flex flex-wrap items-center gap-x-3 gap-y-1`}
+                    >
                       <span style={{ color: TEMP_SERIES.temperature.color }}>
                         {TEMP_SERIES.temperature.label}
                       </span>
@@ -689,8 +660,10 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                         {TEMP_SERIES.dewPoint.label}
                       </span>
                     </div>
-                  ) : metric === "precip" ? (
-                    <div className={`${STICKY_HEADER_CLASS} inline-flex flex-wrap items-center gap-x-3 gap-y-1`}>
+                  ) : metric === 'precip' ? (
+                    <div
+                      className={`${STICKY_HEADER_CLASS} inline-flex flex-wrap items-center gap-x-3 gap-y-1`}
+                    >
                       <span style={{ color: PRECIP_SERIES.precipPotential.color }}>
                         {PRECIP_SERIES.precipPotential.label}
                       </span>
@@ -702,9 +675,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                       </span>
                     </div>
                   ) : (
-                    <span className={STICKY_HEADER_CLASS}>
-                      {metricConfig.label}
-                    </span>
+                    <span className={STICKY_HEADER_CLASS}>{metricConfig.label}</span>
                   )}
                 </div>
                 <div className="h-40 w-full">
@@ -722,9 +693,9 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                           ifOverflow="extendDomain"
                           strokeOpacity={0}
                           fill={
-                            band.phase === "day"
-                              ? "hsl(var(--forecast-day-surface))"
-                              : "hsl(var(--forecast-night-surface))"
+                            band.phase === 'day'
+                              ? 'hsl(var(--forecast-day-surface))'
+                              : 'hsl(var(--forecast-night-surface))'
                           }
                           fillOpacity={0.55}
                         />
@@ -775,8 +746,8 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                             metricIndex === 0
                               ? {
                                   value: marker.label,
-                                  position: "insideTopLeft",
-                                  fill: "hsl(var(--muted-foreground))",
+                                  position: 'insideTopLeft',
+                                  fill: 'hsl(var(--muted-foreground))',
                                   fontSize: 10,
                                 }
                               : undefined
@@ -786,62 +757,56 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                       <Tooltip
                         content={() => null}
                         cursor={{
-                          stroke: "hsl(var(--foreground) / 0.45)",
-                          strokeDasharray: "2 2",
+                          stroke: 'hsl(var(--foreground) / 0.45)',
+                          strokeDasharray: '2 2',
                         }}
                       />
                       <Line
                         type="monotone"
                         dataKey={
-                          metric === "temp"
-                            ? "temperature"
-                            : metric === "precip"
-                              ? "precipPotential"
-                              : "value"
+                          metric === 'temp'
+                            ? 'temperature'
+                            : metric === 'precip'
+                              ? 'precipPotential'
+                              : 'value'
                         }
                         name={
-                          metric === "temp"
+                          metric === 'temp'
                             ? TEMP_SERIES.temperature.label
-                            : metric === "precip"
+                            : metric === 'precip'
                               ? PRECIP_SERIES.precipPotential.label
-                            : metricConfig.label
+                              : metricConfig.label
                         }
                         stroke={
-                          metric === "temp"
+                          metric === 'temp'
                             ? TEMP_SERIES.temperature.color
-                            : metric === "precip"
+                            : metric === 'precip'
                               ? PRECIP_SERIES.precipPotential.color
-                            : metricConfig.color
+                              : metricConfig.color
                         }
                         strokeWidth={2}
                         dot={false}
                         activeDot={
-                          metric === "temp"
+                          metric === 'temp'
                             ? createActiveDotLabelRenderer(
                                 TEMP_SERIES.temperature.color,
                                 formatDegrees,
-                                -14
+                                -14,
                               )
-                            : metric === "precip"
+                            : metric === 'precip'
                               ? createActiveDotLabelRenderer(
                                   PRECIP_SERIES.precipPotential.color,
                                   formatPercent,
-                                  -14
+                                  -14,
                                 )
-                              : metric === "wind"
-                                ? createActiveDotLabelRenderer(
-                                    metricConfig.color,
-                                    formatMph
-                                  )
-                                : createActiveDotLabelRenderer(
-                                    metricConfig.color,
-                                    formatPercent
-                                  )
+                              : metric === 'wind'
+                                ? createActiveDotLabelRenderer(metricConfig.color, formatMph)
+                                : createActiveDotLabelRenderer(metricConfig.color, formatPercent)
                         }
                         connectNulls={false}
                         isAnimationActive={false}
                       />
-                      {metric === "temp" ? (
+                      {metric === 'temp' ? (
                         <>
                           {showWindChillSeries ? (
                             <Line
@@ -853,7 +818,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                               dot={false}
                               activeDot={createActiveDotLabelRenderer(
                                 TEMP_SERIES.windChill.color,
-                                formatDegrees
+                                formatDegrees,
                               )}
                               connectNulls={false}
                               isAnimationActive={false}
@@ -869,13 +834,13 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                             activeDot={createActiveDotLabelRenderer(
                               TEMP_SERIES.dewPoint.color,
                               formatDegrees,
-                              14
+                              14,
                             )}
                             connectNulls={false}
                             isAnimationActive={false}
                           />
                         </>
-                      ) : metric === "precip" ? (
+                      ) : metric === 'precip' ? (
                         <>
                           <Line
                             type="monotone"
@@ -886,7 +851,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                             dot={false}
                             activeDot={createActiveDotLabelRenderer(
                               PRECIP_SERIES.skyCover.color,
-                              formatPercent
+                              formatPercent,
                             )}
                             connectNulls={false}
                             isAnimationActive={false}
@@ -901,7 +866,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                             activeDot={createActiveDotLabelRenderer(
                               PRECIP_SERIES.relativeHumidity.color,
                               formatPercent,
-                              14
+                              14,
                             )}
                             connectNulls={false}
                             isAnimationActive={false}

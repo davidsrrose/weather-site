@@ -1,4 +1,4 @@
-.PHONY: dev dev-docker dev-docker-down setup-backend lint-backend format-backend format-check-backend test-backend dev-backend
+.PHONY: dev dev-docker dev-docker-down setup-backend lint-backend format-backend format-check-backend test-backend dev-backend lint-frontend format-check-frontend typecheck-frontend test-frontend
 
 setup-backend:
 	uv sync --frozen
@@ -17,6 +17,18 @@ test-backend:
 
 dev-backend:
 	PYTHONPATH=backend/src uv run uvicorn fastapi_app.main:app --reload --port 8000
+
+lint-frontend:
+	pnpm -C frontend lint
+
+format-check-frontend:
+	pnpm -C frontend format:check
+
+typecheck-frontend:
+	pnpm -C frontend typecheck
+
+test-frontend:
+	pnpm -C frontend test:run
 
 dev:
 	@command -v uv >/dev/null 2>&1 || (echo "uv is required for local dev."; exit 1)
