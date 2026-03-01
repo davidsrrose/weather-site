@@ -1,6 +1,8 @@
 """dlt source/resource for weather.gov hourly forecast ingestion."""
 
 from collections.abc import Iterable
+from datetime import datetime, timedelta
+import math
 import re
 from typing import Any
 
@@ -9,6 +11,9 @@ import httpx
 
 WIND_SPEED_PATTERN = re.compile(r"\d+")
 ICON_CODE_PATTERN = re.compile(r"/(?:day|night)/([^?]+)")
+VALID_TIME_DURATION_PATTERN = re.compile(
+    r"^P(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?)?$"
+)
 WEATHER_GOV_BASE_URL = "https://api.weather.gov"
 DEFAULT_HTTP_TIMEOUT_SECONDS = 15.0
 
@@ -117,16 +122,133 @@ def _estimate_sky_cover_from_short_forecast(short_forecast: str | None) -> int |
     return None
 
 
-def normalize_hourly_period(period: dict[str, Any]) -> dict[str, Any]:
+def _parse_iso_datetime(value: str | None) -> datetime | None:
+    """Parse ISO datetime string into a timezone-aware datetime.
+
+    Args:
+        value: Datetime string.
+
+    Returns:
+        Parsed datetime or None when parsing fails.
+    """
+    if not isinstance(value, str) or not value:
+        return None
+
+    normalized_value = value.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized_value)
+    except ValueError:
+        return None
+
+    if parsed.tzinfo is None:
+        return None
+    return parsed
+
+
+def _to_hour_bucket(start_time: str | None) -> int | None:
+    """Convert an ISO datetime to an integer hour bucket.
+
+    Args:
+        start_time: ISO datetime.
+
+    Returns:
+        Unix-hour bucket or None when parsing fails.
+    """
+    parsed = _parse_iso_datetime(start_time)
+    if parsed is None:
+        return None
+    return int(parsed.timestamp() // 3600)
+
+
+def _expand_valid_time_to_hour_buckets(valid_time: str | None) -> list[int]:
+    """Expand weather.gov validTime interval into hour buckets.
+
+    Args:
+        valid_time: Interval formatted like `2026-03-01T12:00:00+00:00/PT1H`.
+
+    Returns:
+        List of hour buckets covered by the interval.
+    """
+    if not isinstance(valid_time, str) or "/" not in valid_time:
+        return []
+
+    start_time, duration = valid_time.split("/", maxsplit=1)
+    start = _parse_iso_datetime(start_time)
+    if start is None:
+        return []
+
+    duration_match = VALID_TIME_DURATION_PATTERN.match(duration)
+    if duration_match is None:
+        return []
+
+    days = int(duration_match.group("days") or 0)
+    hours = int(duration_match.group("hours") or 0)
+    minutes = int(duration_match.group("minutes") or 0)
+    total_minutes = days * 24 * 60 + hours * 60 + minutes
+    if total_minutes <= 0:
+        total_minutes = 60
+
+    hour_count = max(1, math.ceil(total_minutes / 60))
+    return [
+        int((start + timedelta(hours=offset)).timestamp() // 3600)
+        for offset in range(hour_count)
+    ]
+
+
+def _build_grid_sky_cover_by_hour(
+    grid_payload: dict[str, Any],
+) -> dict[int, int | float]:
+    """Build sky-cover lookup keyed by hour bucket from forecast grid payload.
+
+    Args:
+        grid_payload: weather.gov forecastGridData payload.
+
+    Returns:
+        Mapping from hour bucket to sky cover percentage.
+    """
+    properties = grid_payload.get("properties")
+    if not isinstance(properties, dict):
+        return {}
+
+    sky_cover_payload = properties.get("skyCover")
+    if not isinstance(sky_cover_payload, dict):
+        return {}
+
+    values = sky_cover_payload.get("values")
+    if not isinstance(values, list):
+        return {}
+
+    by_hour: dict[int, int | float] = {}
+    for value_entry in values:
+        if not isinstance(value_entry, dict):
+            continue
+
+        value = value_entry.get("value")
+        if not isinstance(value, (int, float)):
+            continue
+
+        valid_time = value_entry.get("validTime")
+        for hour_bucket in _expand_valid_time_to_hour_buckets(valid_time):
+            by_hour[hour_bucket] = value
+
+    return by_hour
+
+
+def normalize_hourly_period(
+    period: dict[str, Any], sky_cover_override: int | float | None = None
+) -> dict[str, Any]:
     """Normalize one hourly period from weather.gov into pipeline schema.
 
     Args:
         period: Raw period payload from `properties.periods`.
+        sky_cover_override: Optional sky cover value from forecastGridData.
 
     Returns:
         Normalized period dictionary with stable keys.
     """
-    sky_cover = _extract_measurement_value(period.get("skyCover"))
+    sky_cover = sky_cover_override
+    if not isinstance(sky_cover, (int, float)):
+        sky_cover = _extract_measurement_value(period.get("skyCover"))
     if not isinstance(sky_cover, (int, float)):
         sky_cover = _estimate_sky_cover_from_icon(period.get("icon"))
     if not isinstance(sky_cover, (int, float)):
@@ -234,6 +356,12 @@ def fetch_hourly_periods(
             "weather.gov points payload missing properties.forecastHourly"
         )
 
+    sky_cover_by_hour: dict[int, int | float] = {}
+    forecast_grid_data_url: Any = properties.get("forecastGridData")
+    if isinstance(forecast_grid_data_url, str) and forecast_grid_data_url:
+        grid_payload = _get_json(client=client, url=forecast_grid_data_url)
+        sky_cover_by_hour = _build_grid_sky_cover_by_hour(grid_payload)
+
     hourly_payload: dict[str, Any] = _get_json(client=client, url=forecast_hourly_url)
     hourly_properties: Any = hourly_payload.get("properties")
     if not isinstance(hourly_properties, dict):
@@ -247,7 +375,15 @@ def fetch_hourly_periods(
     for period in periods:
         if not isinstance(period, dict):
             continue
-        normalized_rows.append(normalize_hourly_period(period))
+        period_hour_bucket = _to_hour_bucket(period.get("startTime"))
+        sky_cover_override = (
+            sky_cover_by_hour.get(period_hour_bucket)
+            if period_hour_bucket is not None
+            else None
+        )
+        normalized_rows.append(
+            normalize_hourly_period(period, sky_cover_override=sky_cover_override)
+        )
 
     return normalized_rows
 

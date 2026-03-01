@@ -242,8 +242,7 @@ export function Dashboard({
 
       <Card className="min-h-[220px]">
         <CardHeader>
-          <CardTitle>Graph</CardTitle>
-          <CardDescription>48-hour chart view.</CardDescription>
+          <CardTitle>Forecast Charts</CardTitle>
         </CardHeader>
         <CardContent>
           {isForecastLoading ? (

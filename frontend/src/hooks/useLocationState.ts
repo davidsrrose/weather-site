@@ -17,6 +17,7 @@ const LAST_LOCATION_STORAGE_KEY = 'weather_site_last_location'
 
 const DEFAULT_FAVORITES: Location[] = [
   { kind: 'favorite', label: 'Golden, CO', lat: 39.7555, lon: -105.2211 },
+  { kind: 'favorite', label: 'Wolf Creek Pass Trailhead, CO', lat: 37.482956, lon: -106.797540 },
   { kind: 'favorite', label: 'Winter Park, CO', lat: 39.8917, lon: -105.7631 },
 ]
 
