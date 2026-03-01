@@ -95,6 +95,37 @@ class WeatherHourlyRouteTests(unittest.TestCase):
             },
         )
 
+    def test_weather_hourly_wrapped_pipeline_error_maps_to_502(self) -> None:
+        """Endpoint maps wrapped pipeline errors to stable 502 payload."""
+
+        def _raise_wrapped_exception() -> dict[str, object]:
+            pipeline_error = WeatherHourlyPipelineError(
+                "upstream request failed", upstream_status=301
+            )
+            wrapped_error = RuntimeError("dlt extraction wrapper")
+            wrapped_error.__cause__ = pipeline_error
+            raise wrapped_error
+
+        with patch(
+            "fastapi_app.api.weather.get_hourly_weather_payload",
+            side_effect=_raise_wrapped_exception,
+        ):
+            with TestClient(app) as client:
+                response = client.get(
+                    "/api/weather/hourly", params={"lat": 39.7555, "lon": -105.2211}
+                )
+
+        self.assertEqual(response.status_code, 502)
+        payload = response.json()
+        self.assertEqual(
+            payload["detail"],
+            {
+                "error": "upstream_error",
+                "message": "Unable to load hourly forecast right now.",
+                "upstream_status": 301,
+            },
+        )
+
     def test_weather_hourly_two_quick_calls_use_cache(self) -> None:
         """Two quick endpoint calls should fetch upstream periods once."""
         fetch_call_count = 0

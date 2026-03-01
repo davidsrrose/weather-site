@@ -282,7 +282,25 @@ def _build_points_url(lat: float, lon: float) -> str:
     Returns:
         Full points endpoint URL.
     """
-    return f"{WEATHER_GOV_BASE_URL}/points/{lat},{lon}"
+    return (
+        f"{WEATHER_GOV_BASE_URL}/points/"
+        f"{_format_points_coordinate(lat)},{_format_points_coordinate(lon)}"
+    )
+
+
+def _format_points_coordinate(value: float) -> str:
+    """Format coordinates to weather.gov-friendly precision.
+
+    The points endpoint canonicalizes to shorter decimal precision and may
+    redirect when provided with full browser geolocation precision.
+
+    Args:
+        value: Latitude or longitude.
+
+    Returns:
+        Coordinate rounded to 4 decimals with trailing zeros removed.
+    """
+    return f"{value:.4f}".rstrip("0").rstrip(".")
 
 
 def _get_json(client: httpx.Client, url: str) -> dict[str, Any]:
@@ -404,7 +422,8 @@ def weather_hourly_resource(
     Yields:
         Normalized hourly period dictionaries.
     """
-    with httpx.Client(timeout=http_timeout_seconds) as client:
+    # weather.gov points endpoint may return canonical redirect for coordinates.
+    with httpx.Client(timeout=http_timeout_seconds, follow_redirects=True) as client:
         rows: list[dict[str, Any]] = fetch_hourly_periods(
             lat=lat, lon=lon, client=client
         )

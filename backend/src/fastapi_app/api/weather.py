@@ -16,6 +16,33 @@ from config import config
 router = APIRouter(prefix="/weather", tags=["weather"])
 
 
+def _find_pipeline_error(exc: BaseException) -> WeatherHourlyPipelineError | None:
+    """Walk the exception chain and return embedded pipeline error when present.
+
+    Args:
+        exc: Root exception raised while building weather payload.
+
+    Returns:
+        WeatherHourlyPipelineError when found in cause/context chain.
+    """
+    current: BaseException | None = exc
+    seen: set[int] = set()
+
+    while current is not None:
+        if isinstance(current, WeatherHourlyPipelineError):
+            return current
+
+        current_id = id(current)
+        if current_id in seen:
+            break
+        seen.add(current_id)
+
+        next_exception = current.__cause__ or current.__context__
+        current = next_exception if isinstance(next_exception, BaseException) else None
+
+    return None
+
+
 def fetch_hourly_periods_for_location(
     lat: float,
     lon: float,
@@ -84,12 +111,15 @@ def get_hourly_weather(
 
     try:
         payload = get_hourly_weather_payload(lat=lat, lon=lon)
-    except WeatherHourlyPipelineError as exc:
+    except Exception as exc:
+        pipeline_error = _find_pipeline_error(exc)
+        if pipeline_error is None:
+            raise
         raise HTTPException(
             status_code=502,
             detail=upstream_error_detail(
                 "Unable to load hourly forecast right now.",
-                upstream_status=exc.upstream_status,
+                upstream_status=pipeline_error.upstream_status,
             ),
         ) from exc
 

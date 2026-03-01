@@ -1,4 +1,11 @@
-import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import {
   CartesianGrid,
   Line,
@@ -400,13 +407,27 @@ function resolveYAxisDomain(metric: MetricKey, values: number[]): [number, numbe
   return [0, Math.max(10, maxValue + 5)]
 }
 
+function buildYAxisTicks(domain: [number, number], tickCount = 5): number[] {
+  const [min, max] = domain
+  if (tickCount <= 1 || max === min) {
+    return [max]
+  }
+
+  const step = (max - min) / (tickCount - 1)
+  return Array.from({ length: tickCount }, (_, index) => max - index * step).map((value) =>
+    Math.round(value),
+  )
+}
+
 export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
-  const [scrollLeft, setScrollLeft] = useState(0)
+  const [visibleStartIndex, setVisibleStartIndex] = useState(0)
   const [viewportWidth, setViewportWidth] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
 
   const containerRef = useRef<HTMLDivElement | null>(null)
   const lastLoadedKeyRef = useRef('')
+  const visibleStartIndexRef = useRef(0)
+  const scrollRafRef = useRef<number | null>(null)
   const dragPointerIdRef = useRef<number | null>(null)
   const dragStartXRef = useRef(0)
   const dragStartScrollLeftRef = useRef(0)
@@ -439,12 +460,23 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
   const hourPixelWidth = periods.length > 0 ? chartWidth / periods.length : baselineHourPixelWidth
   const visibleHourCount =
     viewportWidth > 0 ? Math.max(1, Math.floor(viewportWidth / hourPixelWidth)) : WINDOW_SIZE_HOURS
-  const visibleStartIndex = clampWindowStart(
-    Math.floor(scrollLeft / hourPixelWidth),
-    periods.length,
-    visibleHourCount,
-  )
   const visibleEndIndex = Math.min(visibleStartIndex + visibleHourCount, periods.length)
+
+  const updateVisibleStartFromScroll = useCallback(
+    (nextScrollLeft: number) => {
+      const nextStartIndex = clampWindowStart(
+        Math.floor(nextScrollLeft / hourPixelWidth),
+        periods.length,
+        visibleHourCount,
+      )
+      if (nextStartIndex === visibleStartIndexRef.current) {
+        return
+      }
+      visibleStartIndexRef.current = nextStartIndex
+      setVisibleStartIndex(nextStartIndex)
+    },
+    [hourPixelWidth, periods.length, visibleHourCount],
+  )
 
   useEffect(() => {
     const container = containerRef.current
@@ -462,15 +494,43 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
     const initialStart = clampWindowStart(currentHourIndex, periods.length, visibleHourCount)
     const nextScrollLeft = initialStart * hourPixelWidth
     container.scrollLeft = nextScrollLeft
-    setScrollLeft(nextScrollLeft)
-  }, [periods, viewportWidth, hourPixelWidth, visibleHourCount])
+    updateVisibleStartFromScroll(nextScrollLeft)
+  }, [periods, viewportWidth, hourPixelWidth, visibleHourCount, updateVisibleStartFromScroll])
 
-  const handleScroll = () => {
+  useEffect(() => {
     const container = containerRef.current
-    if (!container) {
+    if (!container || viewportWidth <= 0 || periods.length === 0) {
       return
     }
-    setScrollLeft(container.scrollLeft)
+    updateVisibleStartFromScroll(container.scrollLeft)
+  }, [
+    periods.length,
+    viewportWidth,
+    hourPixelWidth,
+    visibleHourCount,
+    updateVisibleStartFromScroll,
+  ])
+
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollRafRef.current)
+      }
+    }
+  }, [])
+
+  const handleScroll = () => {
+    if (scrollRafRef.current !== null) {
+      return
+    }
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      scrollRafRef.current = null
+      const container = containerRef.current
+      if (!container) {
+        return
+      }
+      updateVisibleStartFromScroll(container.scrollLeft)
+    })
   }
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -502,7 +562,6 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
 
     const delta = event.clientX - dragStartXRef.current
     container.scrollLeft = dragStartScrollLeftRef.current - delta
-    setScrollLeft(container.scrollLeft)
   }
 
   const finishDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -769,13 +828,19 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                     <span className={STICKY_HEADER_CLASS}>{metricConfig.label}</span>
                   )}
                 </div>
-                <div className="h-40 w-full">
-                  <ResponsiveContainer>
-                    <LineChart
-                      syncId="hourly-48h-stack"
-                      data={chartData}
-                      margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
-                    >
+                <div className="flex h-80 w-full">
+                  <div className="sticky left-0 z-20 flex w-10 shrink-0 flex-col justify-between border-r bg-background/95 pr-1 pt-2 pb-9 text-right text-[10px] text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/80">
+                    {buildYAxisTicks(yAxisDomain).map((tickValue, tickIndex) => (
+                      <span key={`${metric}-y-tick-${tickIndex}`}>{tickValue}</span>
+                    ))}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <ResponsiveContainer>
+                      <LineChart
+                        syncId="hourly-48h-stack"
+                        data={chartData}
+                        margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
+                      >
                       <XAxis
                         dataKey="startTime"
                         interval={0}
@@ -823,15 +888,7 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                           ifOverflow="extendDomain"
                         />
                       ))}
-                      <YAxis
-                        domain={yAxisDomain}
-                        tickCount={5}
-                        allowDecimals={false}
-                        tick={{ fontSize: 10 }}
-                        tickMargin={8}
-                        width={30}
-                        tickFormatter={(value: number) => `${value}`}
-                      />
+                      <YAxis domain={yAxisDomain} tickCount={5} allowDecimals={false} hide width={0} />
                       {dayMarkers.map((marker) => (
                         <ReferenceLine
                           key={`${metric}-day-start-${marker.startTime}`}
@@ -980,8 +1037,9 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                           ) : null}
                         </>
                       )}
-                    </LineChart>
-                  </ResponsiveContainer>
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
             )
