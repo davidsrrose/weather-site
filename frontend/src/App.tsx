@@ -66,8 +66,8 @@ function App() {
   const forecastErrorMessage = hourlyForecast.error?.message ?? 'Unable to load forecast.'
   return (
     <AppShell
-      title="Weather Site"
-      subtitle="Location-first weather dashboard optimized for mobile and desktop."
+      title="weather.gov "
+      subtitle="but with a better-looking, buggier UI"
       isDarkMode={isDarkMode}
       onToggleDarkMode={toggleThemeMode}
     >

@@ -35,6 +35,7 @@ def _build_mock_weather_gov_client(
     lon: float,
     points_payload: dict[str, Any],
     hourly_payload: dict[str, Any],
+    grid_payload: dict[str, Any] | None = None,
 ) -> httpx.Client:
     """Build an httpx client that serves fixture payloads for weather.gov endpoints.
 
@@ -49,11 +50,18 @@ def _build_mock_weather_gov_client(
     """
     points_url = f"https://api.weather.gov/points/{lat},{lon}"
     hourly_url = points_payload["properties"]["forecastHourly"]
+    grid_url = points_payload["properties"].get("forecastGridData")
 
     def _handler(request: httpx.Request) -> httpx.Response:
         request_url = str(request.url)
         if request_url == points_url:
             return httpx.Response(200, json=points_payload)
+        if (
+            isinstance(grid_url, str)
+            and request_url == grid_url
+            and grid_payload is not None
+        ):
+            return httpx.Response(200, json=grid_payload)
         if request_url == hourly_url:
             return httpx.Response(200, json=hourly_payload)
         return httpx.Response(404, json={"detail": "not found"})
@@ -166,6 +174,38 @@ class WeatherHourlyPipelineTests(unittest.TestCase):
         normalized = normalize_hourly_period(period)
 
         self.assertEqual(normalized["skyCover"], 75)
+
+    def test_fetch_hourly_periods_uses_forecast_grid_data_sky_cover(self) -> None:
+        """Sky cover values from forecastGridData override missing hourly values."""
+        lat = 39.7555
+        lon = -105.2211
+        points_payload = _load_fixture_json("points.json")
+        points_payload["properties"]["forecastGridData"] = (
+            "https://api.weather.gov/gridpoints/BOU/61,64"
+        )
+        hourly_payload = _load_fixture_json("hourly.json")
+        grid_payload: dict[str, Any] = {
+            "properties": {
+                "skyCover": {
+                    "values": [
+                        {"validTime": "2026-02-27T16:00:00-07:00/PT2H", "value": 88}
+                    ]
+                }
+            }
+        }
+
+        client = _build_mock_weather_gov_client(
+            lat=lat,
+            lon=lon,
+            points_payload=points_payload,
+            hourly_payload=hourly_payload,
+            grid_payload=grid_payload,
+        )
+        with client:
+            rows = fetch_hourly_periods(lat=lat, lon=lon, client=client)
+
+        self.assertEqual(rows[0]["skyCover"], 88)
+        self.assertEqual(rows[1]["skyCover"], 88)
 
 
 if __name__ == "__main__":

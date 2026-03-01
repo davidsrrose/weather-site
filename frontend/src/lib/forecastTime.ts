@@ -68,42 +68,6 @@ export function formatForecastHourLabel(startTime: string): string {
   return formatHour(parts.hour)
 }
 
-export function formatForecastDayShortLabel(startTime: string): string {
-  const parts = parseForecastTimeParts(startTime)
-  if (!parts) {
-    return fallbackDateLabel(startTime)
-  }
-
-  return toUtcDate(parts).toLocaleDateString('en-US', {
-    weekday: 'short',
-    timeZone: 'UTC',
-  })
-}
-
-export function formatForecastTooltipLabel(startTime: string): string {
-  const parts = parseForecastTimeParts(startTime)
-  if (!parts) {
-    const date = new Date(startTime)
-    if (Number.isNaN(date.getTime())) {
-      return '--'
-    }
-    return date.toLocaleString([], {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-    })
-  }
-
-  const dayLabel = toUtcDate(parts).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  })
-  return `${dayLabel}, ${formatHour(parts.hour)}`
-}
-
 export function isForecastMidnight(startTime: string): boolean {
   const parts = parseForecastTimeParts(startTime)
   if (!parts) {
@@ -141,22 +105,37 @@ function fallbackRangeEndpointLabel(startTime: string): string {
     .toLocaleTimeString('en-US', { hour: 'numeric' })
     .toLowerCase()
     .replace(/\s+/g, '')
-  return `${day} ${hour}`
+  return `${day} (${hour})`
 }
 
-export function formatForecastRangeEndpointLabel(startTime: string): string {
+export type ForecastRangeEndpointParts = {
+  dayLabel: string
+  timeLabel: string
+}
+
+export function formatForecastRangeEndpointParts(startTime: string): ForecastRangeEndpointParts {
   const parts = parseForecastTimeParts(startTime)
   if (!parts) {
-    return fallbackRangeEndpointLabel(startTime)
+    const fallbackLabel = fallbackRangeEndpointLabel(startTime)
+    const match = /^(.*)\s\(([^)]+)\)$/.exec(fallbackLabel)
+    if (!match) {
+      return { dayLabel: fallbackLabel, timeLabel: '--' }
+    }
+    return { dayLabel: match[1], timeLabel: match[2] }
   }
 
-  const day = toUtcDate(parts).toLocaleDateString('en-US', {
+  const dayLabel = toUtcDate(parts).toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
     timeZone: 'UTC',
   })
-  return `${day} ${formatHourCompact(parts.hour)}`
+  return { dayLabel, timeLabel: formatHourCompact(parts.hour) }
+}
+
+export function formatForecastRangeEndpointLabel(startTime: string): string {
+  const parts = formatForecastRangeEndpointParts(startTime)
+  return `${parts.dayLabel} (${parts.timeLabel})`
 }
 
 export function formatForecastRangeLabel(startTime: string, endTime: string): string {
