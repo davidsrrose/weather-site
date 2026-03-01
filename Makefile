@@ -1,4 +1,4 @@
-.PHONY: dev dev-docker dev-docker-down setup-backend lint-backend format-backend format-check-backend test-backend dev-backend lint-frontend format-check-frontend typecheck-frontend test-frontend
+.PHONY: dev dev-docker dev-docker-down prod-build prod-run setup-backend lint-backend format-backend format-check-backend test-backend dev-backend lint-frontend format-check-frontend typecheck-frontend test-frontend
 
 setup-backend:
 	uv sync --frozen
@@ -55,3 +55,9 @@ dev-docker:
 
 dev-docker-down:
 	docker compose -f docker-compose.dev.yml down
+
+prod-build:
+	docker build -t weather-site:local .
+
+prod-run:
+	docker run --rm -p 8080:8000 weather-site:local

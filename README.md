@@ -86,14 +86,25 @@ Run one command from repo root to build and launch the full app (API + UI served
 
 ```bash
 docker build -t weather-site:local .
-docker run --rm -p 8000:8000 weather-site:local
+docker run --rm -p 8080:8000 weather-site:local
 ```
 
 Open:
-- `http://localhost:8000`
-- `http://localhost:8000/api/health`
+- `http://localhost:8080`
+- `http://localhost:8080/api/health`
+
+`$PORT` behavior:
+- In deployed environments (for example Render), the container binds to `$PORT`.
+- Locally, if `$PORT` is not set, it falls back to port `8000` inside the container.
+- Local mapping example above (`-p 8080:8000`) continues to work without setting `$PORT`.
+
+Makefile shortcuts:
+```bash
+make prod-build
+make prod-run
+```
 
 ## CI Image Publish
-GitHub Actions workflow publishes container images to GHCR on push to `main`:
-- tags: `latest`
-- tags: short commit `sha`
+GitHub Actions workflow publishes container images to GHCR on push:
+- `main`: `prod`, `latest`, `sha-<shortsha>`
+- `staging`: `stg`, `sha-<shortsha>`
