@@ -146,6 +146,7 @@ type ChartPeriod = {
 const X_AXIS_LABEL_INTERVAL_HOURS = 3
 const WINDOW_SIZE_HOURS = 48
 const MIN_SCROLL_CHART_WIDTH_PX = 1200
+const RENDER_BUFFER_HOURS = 12
 const STICKY_HEADER_CLASS =
   'sticky left-0 inline-block bg-background/95 pr-2 backdrop-blur supports-[backdrop-filter]:bg-background/80'
 
@@ -461,6 +462,10 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
   const visibleHourCount =
     viewportWidth > 0 ? Math.max(1, Math.floor(viewportWidth / hourPixelWidth)) : WINDOW_SIZE_HOURS
   const visibleEndIndex = Math.min(visibleStartIndex + visibleHourCount, periods.length)
+  const renderStartIndex = Math.max(0, visibleStartIndex - RENDER_BUFFER_HOURS)
+  const renderEndIndex = Math.min(periods.length, visibleEndIndex + RENDER_BUFFER_HOURS)
+  const renderedPeriodCount = Math.max(0, renderEndIndex - renderStartIndex)
+  const renderedChartWidth = Math.max(hourPixelWidth, renderedPeriodCount * hourPixelWidth)
 
   const updateVisibleStartFromScroll = useCallback(
     (nextScrollLeft: number) => {
@@ -635,48 +640,53 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
     [chartPeriods],
   )
 
+  const renderedBasePoints = useMemo<BaseChartPoint[]>(() => {
+    return basePoints.slice(renderStartIndex, renderEndIndex)
+  }, [basePoints, renderStartIndex, renderEndIndex])
+
   const dayMarkers = useMemo<DayMarker[]>(() => {
-    return basePoints
+    return renderedBasePoints
       .filter((point) => isForecastMidnight(point.startTime))
       .map((point) => ({
         startTime: point.startTime,
         label: formatForecastDayMarkerLabel(point.startTime),
       }))
-  }, [basePoints])
+  }, [renderedBasePoints])
 
   const majorHourLines = useMemo<string[]>(() => {
     return periods
-      .filter((_, index) => index % X_AXIS_LABEL_INTERVAL_HOURS === 0)
+      .slice(renderStartIndex, renderEndIndex)
+      .filter((_, index) => (renderStartIndex + index) % X_AXIS_LABEL_INTERVAL_HOURS === 0)
       .map((period) => period.startTime)
-  }, [periods])
+  }, [periods, renderEndIndex, renderStartIndex])
 
   const dayPhaseBands = useMemo<DayPhaseBand[]>(() => {
-    if (basePoints.length === 0) {
+    if (renderedBasePoints.length === 0) {
       return []
     }
 
     const bands: DayPhaseBand[] = []
     let segmentStart = 0
 
-    for (let index = 1; index <= basePoints.length; index += 1) {
-      const atEnd = index === basePoints.length
+    for (let index = 1; index <= renderedBasePoints.length; index += 1) {
+      const atEnd = index === renderedBasePoints.length
       const phaseChanged =
-        !atEnd && basePoints[index].dayPhase !== basePoints[segmentStart].dayPhase
+        !atEnd && renderedBasePoints[index].dayPhase !== renderedBasePoints[segmentStart].dayPhase
 
       if (!atEnd && !phaseChanged) {
         continue
       }
 
       bands.push({
-        x1: basePoints[segmentStart].startTime,
-        x2: basePoints[index - 1].startTime,
-        phase: basePoints[segmentStart].dayPhase,
+        x1: renderedBasePoints[segmentStart].startTime,
+        x2: renderedBasePoints[index - 1].startTime,
+        phase: renderedBasePoints[segmentStart].dayPhase,
       })
       segmentStart = index
     }
 
     return bands.filter((band) => band.phase !== 'unknown')
-  }, [basePoints])
+  }, [renderedBasePoints])
 
   const hasTempValues = tempChartData.some(
     (point) =>
@@ -834,211 +844,228 @@ export function HourlyGraphPanel({ periods }: HourlyGraphPanelProps) {
                       <span key={`${metric}-y-tick-${tickIndex}`}>{tickValue}</span>
                     ))}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <ResponsiveContainer>
-                      <LineChart
-                        syncId="hourly-48h-stack"
-                        data={chartData}
-                        margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
-                      >
-                      <XAxis
-                        dataKey="startTime"
-                        interval={0}
-                        tickMargin={8}
-                        tickFormatter={(value: string, index: number) =>
-                          index % X_AXIS_LABEL_INTERVAL_HOURS === 0
-                            ? formatForecastHourLabel(value)
-                            : ''
-                        }
-                        angle={-35}
-                        textAnchor="end"
-                        tick={{ fontSize: 10 }}
-                        axisLine
-                        tickLine
-                        height={48}
-                      />
-                      {dayPhaseBands.map((band, index) => (
-                        <ReferenceArea
-                          key={`${metric}-phase-band-${band.x1}-${index}`}
-                          x1={band.x1}
-                          x2={band.x2}
-                          ifOverflow="extendDomain"
-                          strokeOpacity={0}
-                          fill={
-                            band.phase === 'day'
-                              ? 'hsl(var(--forecast-day-surface))'
-                              : 'hsl(var(--forecast-night-surface))'
-                          }
-                          fillOpacity={0.55}
-                        />
-                      ))}
-                      <CartesianGrid
-                        strokeDasharray="0"
-                        stroke="hsl(var(--forecast-grid-line-minor))"
-                        strokeWidth={1}
-                        vertical
-                        horizontal
-                      />
-                      {majorHourLines.map((startTime) => (
-                        <ReferenceLine
-                          key={`${metric}-major-hour-${startTime}`}
-                          x={startTime}
-                          stroke="hsl(var(--forecast-grid-line-major))"
-                          strokeDasharray="0"
-                          ifOverflow="extendDomain"
-                        />
-                      ))}
-                      <YAxis domain={yAxisDomain} tickCount={5} allowDecimals={false} hide width={0} />
-                      {dayMarkers.map((marker) => (
-                        <ReferenceLine
-                          key={`${metric}-day-start-${marker.startTime}`}
-                          x={marker.startTime}
-                          stroke="hsl(var(--foreground) / 0.45)"
-                          strokeDasharray="4 4"
-                          ifOverflow="extendDomain"
-                          label={
-                            metricIndex === 0
-                              ? {
-                                  value: marker.label,
-                                  position: 'insideTopLeft',
-                                  fill: 'hsl(var(--muted-foreground))',
-                                  fontSize: 10,
-                                }
-                              : undefined
-                          }
-                        />
-                      ))}
-                      <Tooltip
-                        content={() => null}
-                        cursor={{
-                          stroke: 'hsl(var(--foreground) / 0.45)',
-                          strokeDasharray: '2 2',
-                        }}
-                      />
-                      {metric === 'temp' ? (
-                        <>
-                          <Line
-                            type="monotone"
-                            dataKey="windChill"
-                            name={TEMP_SERIES.windChill.label}
-                            stroke={TEMP_SERIES.windChill.color}
-                            strokeWidth={2}
-                            dot={false}
-                            activeDot={false}
-                            connectNulls={false}
-                            isAnimationActive={false}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="temperature"
-                            name={TEMP_SERIES.temperature.label}
-                            stroke={TEMP_SERIES.temperature.color}
-                            strokeWidth={2}
-                            dot={false}
-                            activeDot={createActiveDotLabelRenderer(
-                              TEMP_SERIES.temperature.color,
-                              formatDegrees,
-                              -14,
-                            )}
-                            connectNulls={false}
-                            isAnimationActive={false}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="dewPoint"
-                            name={TEMP_SERIES.dewPoint.label}
-                            stroke={TEMP_SERIES.dewPoint.color}
-                            strokeWidth={2}
-                            dot={false}
-                            activeDot={createActiveDotLabelRenderer(
-                              TEMP_SERIES.dewPoint.color,
-                              formatDegrees,
-                              14,
-                            )}
-                            connectNulls={false}
-                            isAnimationActive={false}
-                          />
-                        </>
-                      ) : metric === 'precip' ? (
-                        <>
-                          <Line
-                            type="monotone"
-                            dataKey="precipPotential"
-                            name={PRECIP_SERIES.precipPotential.label}
-                            stroke={PRECIP_SERIES.precipPotential.color}
-                            strokeWidth={2}
-                            dot={false}
-                            activeDot={createActiveDotLabelRenderer(
-                              PRECIP_SERIES.precipPotential.color,
-                              formatPercent,
-                              -14,
-                            )}
-                            connectNulls={false}
-                            isAnimationActive={false}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="skyCover"
-                            name={PRECIP_SERIES.skyCover.label}
-                            stroke={PRECIP_SERIES.skyCover.color}
-                            strokeWidth={2}
-                            dot={false}
-                            activeDot={createActiveDotLabelRenderer(
-                              PRECIP_SERIES.skyCover.color,
-                              formatPercent,
-                            )}
-                            connectNulls={false}
-                            isAnimationActive={false}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="relativeHumidity"
-                            name={PRECIP_SERIES.relativeHumidity.label}
-                            stroke={PRECIP_SERIES.relativeHumidity.color}
-                            strokeWidth={2}
-                            dot={false}
-                            activeDot={createActiveDotLabelRenderer(
-                              PRECIP_SERIES.relativeHumidity.color,
-                              formatPercent,
-                              14,
-                            )}
-                            connectNulls={false}
-                            isAnimationActive={false}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            name={metricConfig.label}
-                            stroke={metricConfig.color}
-                            strokeWidth={2}
-                            dot={false}
-                            activeDot={
-                              metric === 'wind'
-                                ? createActiveDotLabelRenderer(metricConfig.color, formatMph)
-                                : createActiveDotLabelRenderer(metricConfig.color, formatPercent)
+                  <div className="relative min-w-0 flex-1 overflow-hidden">
+                    <div
+                      className="absolute top-0 right-0 bottom-0"
+                      style={{
+                        left: `${renderStartIndex * hourPixelWidth}px`,
+                        width: `${renderedChartWidth}px`,
+                      }}
+                    >
+                      <ResponsiveContainer>
+                        <LineChart
+                          syncId="hourly-48h-stack"
+                          data={chartData.slice(renderStartIndex, renderEndIndex)}
+                          margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
+                        >
+                          <XAxis
+                            dataKey="startTime"
+                            interval={0}
+                            tickMargin={8}
+                            tickFormatter={(value: string, index: number) =>
+                              (renderStartIndex + index) % X_AXIS_LABEL_INTERVAL_HOURS === 0
+                                ? formatForecastHourLabel(value)
+                                : ''
                             }
-                            connectNulls={false}
-                            isAnimationActive={false}
+                            angle={-35}
+                            textAnchor="end"
+                            tick={{ fontSize: 10 }}
+                            axisLine
+                            tickLine
+                            height={48}
                           />
-                          {metric === 'wind' ? (
-                            <Line
-                              type="linear"
-                              dataKey="value"
-                              stroke="transparent"
-                              strokeWidth={0}
-                              dot={renderWindDirectionTick}
-                              activeDot={false}
-                              connectNulls={false}
-                              isAnimationActive={false}
+                          {dayPhaseBands.map((band, index) => (
+                            <ReferenceArea
+                              key={`${metric}-phase-band-${band.x1}-${index}`}
+                              x1={band.x1}
+                              x2={band.x2}
+                              ifOverflow="extendDomain"
+                              strokeOpacity={0}
+                              fill={
+                                band.phase === 'day'
+                                  ? 'hsl(var(--forecast-day-surface))'
+                                  : 'hsl(var(--forecast-night-surface))'
+                              }
+                              fillOpacity={0.55}
                             />
-                          ) : null}
-                        </>
-                      )}
-                      </LineChart>
-                    </ResponsiveContainer>
+                          ))}
+                          <CartesianGrid
+                            strokeDasharray="0"
+                            stroke="hsl(var(--forecast-grid-line-minor))"
+                            strokeWidth={1}
+                            vertical
+                            horizontal
+                          />
+                          {majorHourLines.map((startTime) => (
+                            <ReferenceLine
+                              key={`${metric}-major-hour-${startTime}`}
+                              x={startTime}
+                              stroke="hsl(var(--forecast-grid-line-major))"
+                              strokeDasharray="0"
+                              ifOverflow="extendDomain"
+                            />
+                          ))}
+                          <YAxis
+                            domain={yAxisDomain}
+                            tickCount={5}
+                            allowDecimals={false}
+                            hide
+                            width={0}
+                          />
+                          {dayMarkers.map((marker) => (
+                            <ReferenceLine
+                              key={`${metric}-day-start-${marker.startTime}`}
+                              x={marker.startTime}
+                              stroke="hsl(var(--foreground) / 0.45)"
+                              strokeDasharray="4 4"
+                              ifOverflow="extendDomain"
+                              label={
+                                metricIndex === 0
+                                  ? {
+                                      value: marker.label,
+                                      position: 'insideTopLeft',
+                                      fill: 'hsl(var(--muted-foreground))',
+                                      fontSize: 10,
+                                    }
+                                  : undefined
+                              }
+                            />
+                          ))}
+                          <Tooltip
+                            content={() => null}
+                            cursor={{
+                              stroke: 'hsl(var(--foreground) / 0.45)',
+                              strokeDasharray: '2 2',
+                            }}
+                          />
+                          {metric === 'temp' ? (
+                            <>
+                              <Line
+                                type="monotone"
+                                dataKey="windChill"
+                                name={TEMP_SERIES.windChill.label}
+                                stroke={TEMP_SERIES.windChill.color}
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={false}
+                                connectNulls={false}
+                                isAnimationActive={false}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="temperature"
+                                name={TEMP_SERIES.temperature.label}
+                                stroke={TEMP_SERIES.temperature.color}
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={createActiveDotLabelRenderer(
+                                  TEMP_SERIES.temperature.color,
+                                  formatDegrees,
+                                  -14,
+                                )}
+                                connectNulls={false}
+                                isAnimationActive={false}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="dewPoint"
+                                name={TEMP_SERIES.dewPoint.label}
+                                stroke={TEMP_SERIES.dewPoint.color}
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={createActiveDotLabelRenderer(
+                                  TEMP_SERIES.dewPoint.color,
+                                  formatDegrees,
+                                  14,
+                                )}
+                                connectNulls={false}
+                                isAnimationActive={false}
+                              />
+                            </>
+                          ) : metric === 'precip' ? (
+                            <>
+                              <Line
+                                type="monotone"
+                                dataKey="precipPotential"
+                                name={PRECIP_SERIES.precipPotential.label}
+                                stroke={PRECIP_SERIES.precipPotential.color}
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={createActiveDotLabelRenderer(
+                                  PRECIP_SERIES.precipPotential.color,
+                                  formatPercent,
+                                  -14,
+                                )}
+                                connectNulls={false}
+                                isAnimationActive={false}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="skyCover"
+                                name={PRECIP_SERIES.skyCover.label}
+                                stroke={PRECIP_SERIES.skyCover.color}
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={createActiveDotLabelRenderer(
+                                  PRECIP_SERIES.skyCover.color,
+                                  formatPercent,
+                                )}
+                                connectNulls={false}
+                                isAnimationActive={false}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="relativeHumidity"
+                                name={PRECIP_SERIES.relativeHumidity.label}
+                                stroke={PRECIP_SERIES.relativeHumidity.color}
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={createActiveDotLabelRenderer(
+                                  PRECIP_SERIES.relativeHumidity.color,
+                                  formatPercent,
+                                  14,
+                                )}
+                                connectNulls={false}
+                                isAnimationActive={false}
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <Line
+                                type="monotone"
+                                dataKey="value"
+                                name={metricConfig.label}
+                                stroke={metricConfig.color}
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={
+                                  metric === 'wind'
+                                    ? createActiveDotLabelRenderer(metricConfig.color, formatMph)
+                                    : createActiveDotLabelRenderer(
+                                        metricConfig.color,
+                                        formatPercent,
+                                      )
+                                }
+                                connectNulls={false}
+                                isAnimationActive={false}
+                              />
+                              {metric === 'wind' ? (
+                                <Line
+                                  type="linear"
+                                  dataKey="value"
+                                  stroke="transparent"
+                                  strokeWidth={0}
+                                  dot={renderWindDirectionTick}
+                                  activeDot={false}
+                                  connectNulls={false}
+                                  isAnimationActive={false}
+                                />
+                              ) : null}
+                            </>
+                          )}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
                 </div>
               </div>
